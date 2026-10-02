@@ -414,6 +414,10 @@ QFrame#HomeFeatureCard {{
 QFrame#HomeFeatureCard:hover {{
     border: 1px solid {BRAND_SELECTED};
 }}
+QFrame#HomeFeatureCard[tone="questionnaire"] {{ background-color: {AUX_MIST}; }}
+QFrame#HomeFeatureCard[tone="treehole"] {{ background-color: {AUX_APRICOT}; }}
+QFrame#HomeFeatureCard[tone="appointment"] {{ background-color: {BRAND_SELECTED}; }}
+QFrame#HomeFeatureCard[tone="profile"] {{ background-color: #F0EDE4; }}
 QLabel#HomeCardTitle {{ font-size: 18px; font-weight: 500; color: {INK}; }}
 QLabel#HomeCardDesc {{ font-size: 14px; color: {INK_SOFT}; }}
 QPushButton#HomeCardArrow {{

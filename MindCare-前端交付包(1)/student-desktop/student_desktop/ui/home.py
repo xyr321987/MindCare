@@ -40,16 +40,16 @@ __all__ = ["HomePage"]
 #: 小纸条轮换文案键（顺序即轮换顺序）
 _NOTE_KEYS = ("home.note.1", "home.note.2", "home.note.3", "home.note.4")
 
-#: 四张功能卡片的配色（各自独立的柔和背景色 + 插画主色）
+#: 四张功能卡片的配色（`tone` 动态属性 → 主题 QSS；`accent` 是插画主色）
 _CARD_SPECS = (
     {"key": "questionnaire", "title": "c.tab.questionnaire", "desc": "home.card.questionnaire.desc",
-     "bg": theme.AUX_MIST, "accent": "#6E8B7E"},
+     "accent": "#6E8B7E"},
     {"key": "treehole", "title": "s.treehole.tab.title", "desc": "home.card.treehole.desc",
-     "bg": theme.AUX_APRICOT, "accent": "#8A7A62"},
+     "accent": "#8A7A62"},
     {"key": "appointment", "title": "c.tab.appointment", "desc": "home.card.appointment.desc",
-     "bg": theme.BRAND_SELECTED, "accent": "#355B4C"},
+     "accent": "#355B4C"},
     {"key": "profile", "title": "c.tab.profile", "desc": "home.card.profile.desc",
-     "bg": "#F0EDE4", "accent": "#7E8A82"},
+     "accent": "#7E8A82"},
 )
 
 
@@ -67,7 +67,6 @@ class _MountainScene(QWidget):
         self._far = QColor(far)
         self._sun = QColor(sun)
         self._cloud = QColor(cloud)
-        self.setAttribute(Qt.WA_StyledBackground, True)
         self.setMinimumSize(140, 96)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
@@ -146,11 +145,12 @@ class _FeatureCard(QFrame):
 
     clicked = Signal(str)
 
-    def __init__(self, key: str, title: str, desc: str, bg: str, accent: str,
+    def __init__(self, key: str, title: str, desc: str, accent: str,
                  parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setObjectName("HomeFeatureCard")
         self._key = key
+        self.setProperty("tone", key)
         self.setCursor(Qt.PointingHandCursor)
 
         inner = QVBoxLayout(self)
@@ -159,7 +159,6 @@ class _FeatureCard(QFrame):
 
         self.art = _MountainScene(accent=accent, far="#C4CFC8", sun="#E9C98F")
         self.art.setMinimumHeight(90)
-        self.art.setStyleSheet(f"background: transparent;")
         inner.addWidget(self.art, 1)
 
         self.title_label = make_label(title, "HomeCardTitle", word_wrap=False)
@@ -176,10 +175,6 @@ class _FeatureCard(QFrame):
         self.arrow.clicked.connect(lambda: self.clicked.emit(self._key))
         arrow_row.addWidget(self.arrow)
         inner.addLayout(arrow_row)
-
-        # 卡片独立柔和背景色（QSS 里的 Card 背景为白，这里用局部色覆盖）
-        self.setStyleSheet(
-            f"QFrame#HomeFeatureCard {{ background-color: {bg}; }}")
 
     def mousePressEvent(self, event) -> None:  # noqa: N802
         # 点卡片任意处（除箭头按钮）也进入对应功能
@@ -259,7 +254,7 @@ class HomePage(QWidget):
         for spec in _CARD_SPECS:
             card = _FeatureCard(
                 spec["key"], COPY[spec["title"]], COPY[spec["desc"]],
-                spec["bg"], spec["accent"])
+                spec["accent"])
             card.clicked.connect(self.navigate.emit)
             self._cards.append(card)
         self._content_layout.addLayout(self._cards_grid)

@@ -1,4 +1,4 @@
-MindCare 学生端自检全文（生成时间：2026-10-03 03:37:42+0800）
+MindCare 学生端自检全文（生成时间：2026-10-03 03:40:12+0800）
 本文件由 `selfcheck.py` 自动写入，请勿手工编辑。
 
 [PASS] PySide6 已安装且可导入
@@ -10,7 +10,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 03:37:42+0800）
 [PASS] desktop_common 四个模块存在
        theme.py / api.py / widgets.py / models.py（包版本 1.1.0）
 [PASS] build_qss() 可调用且返回非空 QSS
-       QSS 长度 12023 字符；objectName 约定 18 个
+       QSS 长度 12314 字符；objectName 约定 18 个
 [PASS] 正文对比度全部 ≥ 4.5:1
        INK/BG=10.53、INK/CARD=11.4、INK_SOFT/BG=4.97、INK_SOFT/CARD=5.38、PRIMARY_INK/MIST=5.19、INK/MIST=6.31
 [PASS] 主色雾蓝不做字色（白字压雾蓝不足 4.5:1，故用 PRIMARY_INK）
@@ -48,7 +48,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 03:37:42+0800）
 [PASS] 非 JSON 响应 → ApiError(3001)
        ApiError(code=3001, message='响应不是合法 JSON：<html>not json</html>')
 [PASS] 网络超时 → ApiError('timeout')，幂等写接口重试一次
-       ApiError(code='timeout')；耗时 0.82s；命中桩服务 2 次（幂等写接口超时重试一次 = 2 次请求）
+       ApiError(code='timeout')；耗时 0.83s；命中桩服务 2 次（幂等写接口超时重试一次 = 2 次请求）
 [PASS] 传输层可注入（无需真实网络即可测客户端逻辑）
        注入的 transport 被调用：['http://127.0.0.1:1/api/v1/health']
 [PASS] offscreen 下构建完整控件树（无异常）
@@ -58,7 +58,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 03:37:42+0800）
 [PASS] 主窗口 Tab 数量与标题来自文案表（首页 + 问卷/树洞/档案/预约 + 关于）
        tabs=['首页', '问卷', '树洞', '我的档案', '预约', '关于']（首页 / 问卷 / 树洞 / 我的档案 / 预约 / 关于）
 [PASS] 独立「预约」标签页：确认后 POST /appointments + 成功提示 + 清空选择 + 标记本人已约
-       新增 POST=1 条；成功提示显示=True；文案='预约好了，老师会在这个时间看到你。'；mine 命中=True；body={"apt_id": "apt_ce2390cb71f6", "year": "2026", "month": "10", "day": "08", "time": "08:50", "share_questionnaire": true, "share_treehole": false}
+       新增 POST=1 条；成功提示显示=True；文案='预约好了，老师会在这个时间看到你。'；mine 命中=True；body={"apt_id": "apt_3251b8a79736", "year": "2026", "month": "10", "day": "08", "time": "08:50", "share_questionnaire": true, "share_treehole": false}
 [PASS] 关于页含非诊断声明 + 危机热线（UI约定 §6 页脚硬要求）
        声明命中=True；热线命中=True；关于页文本='· 你填的内容只用于学校里的心理支持，不做别的用途。 | · 内容默认只有你自己能看到。只有你选了「请求心理老师帮助」，老师才会看到这次的内容。 | · 树洞里的内容永远是私密的，老师看不到，也不会进入任何统计。 | 这里的内容是关怀用的参考，不构成医学诊断。如果一直觉得不太好，可以让家人或老师陪你'
 [PASS] 告知页含非诊断声明 + 危机热线（学生第一次看到的就是这一页）
@@ -86,7 +86,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 03:37:42+0800）
 [PASS] 『请求心理老师帮助』→ 先跳去选预约时间（不直接提交）
        当前页='appointment'（应为 'appointment'）
 [PASS] 「预约确认」→ 组装 POST /appointments 请求体（幂等 apt_ + 字段齐全 + 复用）
-       {"apt_id": "apt_ba3562b7bfc8", "day": "3", "month": "10", "share_questionnaire": true, "share_treehole": false, "time": "15:00", "year": "2026"}；二次组包 apt_id 复用=True
+       {"apt_id": "apt_1c074ffadd27", "day": "3", "month": "10", "share_questionnaire": true, "share_treehole": false, "time": "15:00", "year": "2026"}；二次组包 apt_id 复用=True
 [PASS] result_scene 四个值都有对应页面（穷举）
        {"happy_end": "ResultPage", "plain_tips": "ResultPage", "help_sent": "ResultPage", "self_care": "ResultPage"}
 [PASS] show_result() 能切到 4 个结果页
@@ -116,13 +116,13 @@ MindCare 学生端自检全文（生成时间：2026-10-03 03:37:42+0800）
 [PASS] QSS 有可见 focus 样式
        QSS 含 'QPushButton:focus { border: 2px solid #7FA6BA; }'
 [PASS] 截图成功且 ≥ 5 张
-       01_login.png 52765 bytes；02_questionnaire_notice.png 76664 bytes；03_q1_mood.png 76664 bytes；03b_explore.png 76664 bytes；04_q3_detail.png 76664 bytes；05_help_choice.png 76664 bytes；05b_appointment_grid.png 70645 bytes；06_result_self_care.png 80857 bytes；07_treehole.png 86955 bytes；08_profile.png 65237 bytes；09_engine_not_ready.png 55343 bytes；10_about.png 74807 bytes
+       01_login.png 52765 bytes；02_questionnaire_notice.png 76664 bytes；03_q1_mood.png 76664 bytes；03b_explore.png 76664 bytes；04_q3_detail.png 76664 bytes；05_help_choice.png 76664 bytes；05b_appointment_grid.png 70645 bytes；06_result_self_care.png 80857 bytes；07_treehole.png 86936 bytes；08_profile.png 65237 bytes；09_engine_not_ready.png 55343 bytes；10_about.png 74807 bytes
 [PASS] 截图为真实渲染（不同颜色数远超纯色底）
-       不同颜色数（隔点采样）：01_login.png=197、02_questionnaire_notice.png=353、03_q1_mood.png=353、03b_explore.png=353、04_q3_detail.png=353、05_help_choice.png=353、05b_appointment_grid.png=301、06_result_self_care.png=319、07_treehole.png=375、08_profile.png=269、09_engine_not_ready.png=228、10_about.png=275
+       不同颜色数（隔点采样）：01_login.png=197、02_questionnaire_notice.png=353、03_q1_mood.png=353、03b_explore.png=353、04_q3_detail.png=353、05_help_choice.png=353、05b_appointment_grid.png=301、06_result_self_care.png=319、07_treehole.png=374、08_profile.png=269、09_engine_not_ready.png=228、10_about.png=275
 [PASS] 关键页面无硬编码中文界面文案（文案均来自 COPY）
        AST 扫描 9 个文件，命中『会进入界面』的中文字面量 0 个 → 非文案来源的可疑项 0 个
 [PASS] 启动即调用 GET /health（应用里第一次真正用它）
-       health_checked=True；payload={"status": "ok", "version": "1.0.0-stub", "server_time": "2026-10-03T03:37:30+08:00", "engine_ready": true}；本窗口实际请求记录=['GET /health']
+       health_checked=True；payload={"status": "ok", "version": "1.0.0-stub", "server_time": "2026-10-03T03:40:00+08:00", "engine_ready": true}；本窗口实际请求记录=['GET /health']
 [PASS] engine_ready=true → 无提示、提交按钮可用
        engine_ready=True；提示条可见=False；提交按钮 enabled=[True, True, True]
 [PASS] engine_ready=false → 非阻塞提示可见（文案来自文案表键 c.engine.notReady）
@@ -138,7 +138,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 03:37:42+0800）
 [PASS] 登录态默认路径 = %LOCALAPPDATA%\MindCare\session.json（路径不写死、不落工程目录）
        session_dir() 默认=C:\Users\admin\AppData\Local\MindCare；session_file() 默认=C:\Users\admin\AppData\Local\MindCare\session.json；LOCALAPPDATA='C:\\Users\\admin\\AppData\\Local'；是否位于工程目录(C:\Users\admin\Desktop\2026_10_02_MindCare-服务端(1)\MindCare-前端交付包(1))下=False；本次自检实际使用（MINDCAKE_SESSION_DIR 覆盖）=C:\Users\admin\AppData\Local\Temp\mindcare-selfcheck-session\session.json
 [PASS] 登录成功后 session 文件确实写入（含 token / profile / saved_at）
-       路径=C:\Users\admin\AppData\Local\Temp\mindcare-selfcheck-session\session.json（270 bytes）；token=persiste…（打码，原文 30 字符）；profile.id='2023001'；saved_at=1790969850.9048617；expires_in=43200；expires_at-saved_at=43200s（契约 43200s=12h）
+       路径=C:\Users\admin\AppData\Local\Temp\mindcare-selfcheck-session\session.json（270 bytes）；token=persiste…（打码，原文 30 字符）；profile.id='2023001'；saved_at=1790970001.6613393；expires_in=43200；expires_at-saved_at=43200s（契约 43200s=12h）
 [PASS] 号次 2023001 原样发出（v1.1 注册制：不补前缀）且带密码
        POST /auth/login body=[{"role": "student", "id": "2023001", "password": "1234"}]；normalize_student_no('2023001')='2023001'
 [PASS] 模拟重启：新 ApiClient + 新窗口 → 直接进主窗（不再弹登录页）
@@ -184,7 +184,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 03:37:42+0800）
 [PASS] 同一时刻的不同写法 → 同一（Asia/Shanghai）结果，不受本机时区影响
        +08:00 写法='10月2日 21:40'；+00:00 写法='10月2日 21:40'；Z 写法='10月2日 21:40'
 [PASS] 刚刚记录的时间戳（今天）也用同一套『M月D日 HH:MM』写法
-       now_iso()='2026-10-03T03:37:39+08:00' → '10月3日 03:37'（对比 2026-10-02T21:40:00+08:00 → '10月2日 21:40'）
+       now_iso()='2026-10-03T03:40:10+08:00' → '10月3日 03:40'（对比 2026-10-02T21:40:00+08:00 → '10月2日 21:40'）
 [PASS] 今天与往日用**同一套**写法（M月D日 HH:MM），同一列表内可直接扫读
        今天样例（2026-10-02）='10月2日 21:40'；往日样例（2026-09-15T21:40:00+08:00）='9月15日 21:40'；长度一致=True（两次都是两位数日号）
 [PASS] 异常输入（None / '' / 'not-a-ts' / 非法日期 / 非字符串）不抛异常
@@ -202,12 +202,12 @@ MindCare 学生端自检全文（生成时间：2026-10-03 03:37:42+0800）
 [PASS] 界面用到的键都真实存在（不会渲染成『⟪缺文案:…⟫』）
        'c.engine.notReady'='数据库正在恢复，稍等一下再试就好。'；'c.engine.notReady.action'='现在还不能提交，等一会儿再试一次。'；c.login.studentNo.format='号次是你的编号，注册后用它登录。'
 [PASS] build_appointment_record 组装出契约字段（v1.0 的 11 个一个不少）
-       {"apt_id": "apt_334b6473b0be", "class_name": "初二(3)班", "created_ts": "2026-10-03T03:37:42+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}
+       {"apt_id": "apt_c05ae1d77486", "class_name": "初二(3)班", "created_ts": "2026-10-03T03:40:12+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}
 [PASS] v1.1 追加课表定位：period / weekday / time_start / time_end / slot
        period=7 weekday=6 15:11-16:00 slot=2026-10-03#7
 [PASS] append → list 一条预约可读回，字段与 ID 前缀一致
-       [{"apt_id": "apt_334b6473b0be", "class_name": "初二(3)班", "created_ts": "2026-10-03T03:37:42+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}]
+       [{"apt_id": "apt_c05ae1d77486", "class_name": "初二(3)班", "created_ts": "2026-10-03T03:40:12+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}]
 [PASS] 坏行跳过 + 空记录不写（坏数据不崩、宁可缺）
-       [{"apt_id": "apt_334b6473b0be", "class_name": "初二(3)班", "created_ts": "2026-10-03T03:37:42+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}, {"apt_id": "apt_eb680b954ef1", "class_name": null, "created_ts": "2026-10-03T03:37:42+08:00", "day": "4", "month": "10", "name": "", "period": "2", "share_questionnaire": false, "share_treehole": true, "slot": "2026-10-04#2", "student_id": "stu_2023002", "time": "09:00", "time_end": "09:35", "time_start": "08:50", "weekday": "7", "year": "2026"}]
+       [{"apt_id": "apt_c05ae1d77486", "class_name": "初二(3)班", "created_ts": "2026-10-03T03:40:12+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}, {"apt_id": "apt_078d1c278bf4", "class_name": null, "created_ts": "2026-10-03T03:40:12+08:00", "day": "4", "month": "10", "name": "", "period": "2", "share_questionnaire": false, "share_treehole": true, "slot": "2026-10-04#2", "student_id": "stu_2023002", "time": "09:00", "time_end": "09:35", "time_start": "08:50", "weekday": "7", "year": "2026"}]
 
 共 104 项：通过 104，未通过 0
