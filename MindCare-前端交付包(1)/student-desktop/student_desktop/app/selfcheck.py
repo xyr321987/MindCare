@@ -792,7 +792,7 @@ def check_ui(app: QtWidgets.QApplication,
         "MainTabs": QtWidgets.QWidget,
         "QuestionnaireStack": QtWidgets.QStackedWidget,
         "TreeholeTab": QtWidgets.QWidget,
-        "TreeholeList": QtWidgets.QListWidget,
+        "TreeholeScroll": QtWidgets.QScrollArea,
         "ProfileTab": QtWidgets.QWidget,
         "ProfileDayPicker": QtWidgets.QComboBox,
         "AboutTab": QtWidgets.QWidget,
@@ -1156,18 +1156,62 @@ def check_ui(app: QtWidgets.QApplication,
                         if word in value:
                             offline_hits.append(f"{type(widget).__name__}"
                                                 f"({widget.objectName()}).{attr_name}={value!r}")
-    # 档案页里**唯一允许**的按钮是"重试/刷新"（拉日期用的 `c.action.retry`）；
+    # 档案页里**允许**的按钮 = 刷新（拉日期）+ 面包屑（档案记录/情绪可视化）+ 周导航（上一周/下一周）；
     # 任何记录级的操作按钮（旧版的收回可见性入口）都必须不存在。
     profile_buttons = window.profile_page.findChildren(QtWidgets.QPushButton)
-    record_buttons = [b for b in profile_buttons if b.text() != COPY["c.action.retry"]]
+    allowed_profile_buttons = {
+        COPY["c.action.retry"], COPY["c.profile.view.records"],
+        COPY["c.profile.view.chart"], COPY["c.profile.chart.week.prev"],
+        COPY["c.profile.chart.week.next"],
+    }
+    record_buttons = [b for b in profile_buttons if b.text() not in allowed_profile_buttons]
     REPORT.check("档案页零已下线能力入口（无记录级按钮、无下线能力文案）",
                  not offline_hits and not record_buttons,
                  f"禁用词 {len(offline_words)} 条（推导自文案表键 "
                  f"{list(_OFFLINE_KEY_PREFIXES)}）；"
                  f"扫描 {len(profile_widgets)} 个控件 → 命中 {len(offline_hits)}；"
                  f"档案页按钮 {len(profile_buttons)} 个"
-                 f"（仅允许『{COPY['c.action.retry']}』），记录级按钮={len(record_buttons)}"
+                 f"（允许 刷新 + 面包屑 + 周导航，共 {len(allowed_profile_buttons)} 种文案）"
+                 f"，记录级按钮={len(record_buttons)}"
                  + ("；" + "；".join(offline_hits[:3]) if offline_hits else ""))
+
+    # --- 情绪可视化（面包屑导航 + 一周情绪折线图）----------------------------
+    profile_page = window.profile_page
+    profile_page.chart_btn.click()
+    pump(app, 60)
+    REPORT.check("面包屑「情绪可视化」→ 切到图表视图",
+                 profile_page.view_stack.currentIndex() == 1,
+                 f"view_stack.currentIndex={profile_page.view_stack.currentIndex()}（应 1）")
+    # 等 mood_range 异步落地（stub 返回空），避免它晚到覆盖下面直接塞的数据
+    window.runner.wait(3000)
+    pump(app, 100)
+    week_days = profile_page._week_days()
+    profile_page.set_mood_range([
+        {"date": week_days[0], "mood": "down"},
+        {"date": week_days[2], "mood": "plain"},
+        {"date": week_days[4], "mood": "happy"},
+    ])
+    pump(app, 60)
+    REPORT.check("图表接收每日情绪点（有数据 → 空态隐藏）",
+                 profile_page.chart.has_data() and not profile_page.chart_empty.isVisible(),
+                 f"has_data={profile_page.chart.has_data()}；"
+                 f"空态可见={profile_page.chart_empty.isVisible()}")
+    REPORT.check("图表把情绪映射为 1/2/3（沮丧/平淡/高兴）",
+                 profile_page.chart._mood.get(week_days[0]) == "down"
+                 and profile_page.chart._mood.get(week_days[2]) == "plain"
+                 and profile_page.chart._mood.get(week_days[4]) == "happy",
+                 f"week={week_days[0]}~{week_days[-1]}；_mood={profile_page.chart._mood}")
+    old_title = profile_page.week_title.text()
+    profile_page.week_next_btn.click()
+    pump(app, 60)
+    REPORT.check("「下一周」切换图表所在周",
+                 profile_page.week_title.text() != old_title,
+                 f"标题 {old_title!r} → {profile_page.week_title.text()!r}")
+    profile_page.records_btn.click()
+    pump(app, 60)
+    REPORT.check("面包屑「档案记录」→ 切回记录列表",
+                 profile_page.view_stack.currentIndex() == 0,
+                 f"view_stack.currentIndex={profile_page.view_stack.currentIndex()}（应 0）")
 
     # --- 键盘可达 -----------------------------------------------------------
     clickables = [w for w in window.findChildren(QtWidgets.QPushButton)]
@@ -1271,6 +1315,22 @@ def check_ui(app: QtWidgets.QApplication,
     ]})
     pump(app, 100)
     shots.append(grab(window, "08_profile.png", app))
+
+    # 08b：情绪可视化图表（面包屑切到图表视图 + 一周情绪点，含断线示例）
+    window.profile_page.chart_btn.click()
+    window.runner.wait(2000)      # 等异步 mood_range（stub 空）落地，再塞演示数据
+    pump(app, 100)
+    week = window.profile_page._week_days()
+    window.profile_page.set_mood_range([
+        {"date": week[0], "mood": "down"},
+        {"date": week[1], "mood": "plain"},
+        {"date": week[3], "mood": "happy"},
+        {"date": week[5], "mood": "plain"},
+    ])
+    pump(app, 200)
+    shots.append(grab(window, "08b_mood_chart.png", app))
+    window.profile_page.records_btn.click()
+    pump(app, 100)
 
     # 09：要求 1 的「数据库恢复中」提示态（顶部非阻塞提示条 + 提交按钮禁用）
     window.tabs.setCurrentWidget(q)
@@ -2387,6 +2447,7 @@ def _hardcoded_chinese_scan() -> Tuple[bool, str]:
         target_dir / "ui" / "questionnaire.py",
         target_dir / "ui" / "treehole.py",
         target_dir / "ui" / "profile.py",
+        target_dir / "ui" / "mood_chart.py",
         target_dir / "app" / "main.py",
         target_dir / "app" / "worker.py",
         ROOT / "desktop_common" / "widgets.py",

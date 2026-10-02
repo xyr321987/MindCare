@@ -396,6 +396,25 @@ def my_dates(db: Database, student_id: str) -> dict:
     return {"dates": dates}
 
 
+def mood_range(db: Database, student_id: str, start: str, end: str) -> dict:
+    """区间内每日情绪点（学生端「情绪可视化」）：每天取最新一次提交的 mood。"""
+    _validate_date(start)
+    _validate_date(end)
+    if start > end:
+        start, end = end, start
+    rows = db.query(
+        "SELECT date, mood FROM questionnaire_submissions"
+        " WHERE student_id=? AND date>=? AND date<=?"
+        " ORDER BY date, ts DESC, rowid DESC",
+        (student_id, start, end),
+    )
+    by_day: dict = {}
+    for r in rows:
+        by_day.setdefault(r["date"], r["mood"])
+    items = [{"date": d, "mood": m} for d, m in sorted(by_day.items())]
+    return {"start": start, "end": end, "items": items}
+
+
 # =========================================================================== 树洞
 def create_treehole(db: Database, student_id: str, body: dict) -> dict:
     entry_id = str(body.get("entry_id") or "").strip()

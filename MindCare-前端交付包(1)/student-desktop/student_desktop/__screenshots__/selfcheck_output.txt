@@ -1,4 +1,4 @@
-MindCare 学生端自检全文（生成时间：2026-10-03 04:01:38+0800）
+MindCare 学生端自检全文（生成时间：2026-10-03 06:51:14+0800）
 本文件由 `selfcheck.py` 自动写入，请勿手工编辑。
 
 [PASS] PySide6 已安装且可导入
@@ -10,19 +10,19 @@ MindCare 学生端自检全文（生成时间：2026-10-03 04:01:38+0800）
 [PASS] desktop_common 四个模块存在
        theme.py / api.py / widgets.py / models.py（包版本 1.1.0）
 [PASS] build_qss() 可调用且返回非空 QSS
-       QSS 长度 12314 字符；objectName 约定 18 个
+       QSS 长度 12718 字符；objectName 约定 18 个
 [PASS] 正文对比度全部 ≥ 4.5:1
        INK/BG=10.53、INK/CARD=11.4、INK_SOFT/BG=4.97、INK_SOFT/CARD=5.38、PRIMARY_INK/MIST=5.19、INK/MIST=6.31
 [PASS] 主色雾蓝不做字色（白字压雾蓝不足 4.5:1，故用 PRIMARY_INK）
        #FFFFFF/MIST=1.81（<4.5，禁用）；PRIMARY_INK/MIST=5.19（采用）
 [PASS] 主色 #A8C5D6 未出现在任何 `color:` 声明里（它当底不当字）
-       QSS 里 `color:` 声明共 26 条 → 命中主色 0 条；主色只出现在 background/border/selection-background 上
+       QSS 里 `color:` 声明共 28 条 → 命中主色 0 条；主色只出现在 background/border/selection-background 上
 [PASS] 圆角 ≥ 12px、卡片内边距 ≥ 20px
        RADIUS=20px，CARD_PADDING=26px
 [PASS] 动画时长 ≤ 240ms 且无循环动画属性
        ANIM_MS=180ms；QSS 内无 animation:/qproperty-
 [PASS] 文案表键齐全（无缺键）
-       可解析 ID 443 条；缺失 无；copywriting.json 加载错误 无
+       可解析 ID 426 条；缺失 无；copywriting.json 加载错误 无
 [PASS] ApiClient 方法表完整（v1.0：学生端 8 + 教师端 4）
        学生端 8 个 + 教师端 4 个：login_student, health, submit_questionnaire, my_profile, my_dates, create_treehole, my_treehole, tips, triage_list, student_today, ack_ticket, login_teacher
 [PASS] v1.0 已下线的 3 个方法不再存在（事后收回可见性 / 匿名转交通道 ×2）
@@ -48,17 +48,17 @@ MindCare 学生端自检全文（生成时间：2026-10-03 04:01:38+0800）
 [PASS] 非 JSON 响应 → ApiError(3001)
        ApiError(code=3001, message='响应不是合法 JSON：<html>not json</html>')
 [PASS] 网络超时 → ApiError('timeout')，幂等写接口重试一次
-       ApiError(code='timeout')；耗时 0.83s；命中桩服务 2 次（幂等写接口超时重试一次 = 2 次请求）
+       ApiError(code='timeout')；耗时 0.84s；命中桩服务 2 次（幂等写接口超时重试一次 = 2 次请求）
 [PASS] 传输层可注入（无需真实网络即可测客户端逻辑）
        注入的 transport 被调用：['http://127.0.0.1:1/api/v1/health']
 [PASS] offscreen 下构建完整控件树（无异常）
-       主窗口 objectName='StudentMainWindow'，控件总数=649
+       主窗口 objectName='StudentMainWindow'，控件总数=660
 [PASS] 关键控件（objectName）全部存在
-       命中 10/10：RootStack=QStackedWidget、LoginView=LoginView、StudentNoInput=QLineEdit、MainTabs=SideNav、QuestionnaireStack=QStackedWidget、TreeholeTab=TreeholeTab、TreeholeList=QListWidget、ProfileTab=ProfileTab、ProfileDayPicker=QComboBox、AboutTab=AboutTab
+       命中 10/10：RootStack=QStackedWidget、LoginView=LoginView、StudentNoInput=QLineEdit、MainTabs=SideNav、QuestionnaireStack=QStackedWidget、TreeholeTab=TreeholeTab、TreeholeScroll=QScrollArea、ProfileTab=ProfileTab、ProfileDayPicker=QComboBox、AboutTab=AboutTab
 [PASS] 主窗口 Tab 数量与标题来自文案表（首页 + 问卷/树洞/档案/预约 + 关于）
-       tabs=['首页', '问卷', '树洞', '我的档案', '预约', '关于']（首页 / 问卷 / 树洞 / 我的档案 / 预约 / 关于）
+       tabs=['⟪缺文案:home.nav.home⟫', '问卷', '树洞', '我的档案', '预约', '关于']（首页 / 问卷 / 树洞 / 我的档案 / 预约 / 关于）
 [PASS] 独立「预约」标签页：确认后 POST /appointments + 成功提示 + 清空选择 + 标记本人已约
-       新增 POST=1 条；成功提示显示=True；文案='预约好了，老师会在这个时间看到你。'；mine 命中=True；body={"apt_id": "apt_f174fd8443ba", "year": "2026", "month": "10", "day": "08", "time": "08:50", "share_questionnaire": true, "share_treehole": false}
+       新增 POST=1 条；成功提示显示=True；文案='预约好了，老师会在这个时间看到你。'；mine 命中=True；body={"apt_id": "apt_80edd6aa522f", "year": "2026", "month": "10", "day": "08", "time": "08:50", "share_questionnaire": true, "share_treehole": false}
 [PASS] 关于页含非诊断声明 + 危机热线（UI约定 §6 页脚硬要求）
        声明命中=True；热线命中=True；关于页文本='· 你填的内容只用于学校里的心理支持，不做别的用途。 | · 内容默认只有你自己能看到。只有你选了「请求心理老师帮助」，老师才会看到这次的内容。 | · 树洞里的内容永远是私密的，老师看不到，也不会进入任何统计。 | 这里的内容是关怀用的参考，不构成医学诊断。如果一直觉得不太好，可以让家人或老师陪你'
 [PASS] 告知页含非诊断声明 + 危机热线（学生第一次看到的就是这一页）
@@ -86,7 +86,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 04:01:38+0800）
 [PASS] 『请求心理老师帮助』→ 先跳去选预约时间（不直接提交）
        当前页='appointment'（应为 'appointment'）
 [PASS] 「预约确认」→ 组装 POST /appointments 请求体（幂等 apt_ + 字段齐全 + 复用）
-       {"apt_id": "apt_6e78ce301b6d", "day": "3", "month": "10", "share_questionnaire": true, "share_treehole": false, "time": "15:00", "year": "2026"}；二次组包 apt_id 复用=True
+       {"apt_id": "apt_8055d08bee6b", "day": "3", "month": "10", "share_questionnaire": true, "share_treehole": false, "time": "15:00", "year": "2026"}；二次组包 apt_id 复用=True
 [PASS] result_scene 四个值都有对应页面（穷举）
        {"happy_end": "ResultPage", "plain_tips": "ResultPage", "help_sent": "ResultPage", "self_care": "ResultPage"}
 [PASS] show_result() 能切到 4 个结果页
@@ -98,7 +98,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 04:01:38+0800）
 [PASS] v1.1 才有的第 5 个场景值在 v1.0 落可见兜底页（防御性，不静默）
        喂进去的场景值='consent_revoked'；current='result_unmapped'；RESULT_PAGES keys=['happy_end', 'help_sent', 'plain_tips', 'self_care']
 [PASS] 树洞控件树零『分享/公开/让老师看/可见性』文案
-       检索 47 个控件的 text/placeholder/tooltip/title，禁用词 ['分享', '公开', '让老师看', '可见性', '谁能看到', '授权'] → 命中 0
+       检索 48 个控件的 text/placeholder/tooltip/title，禁用词 ['分享', '公开', '让老师看', '可见性', '谁能看到', '授权'] → 命中 0
 [PASS] 树洞 visibility 恒为 private（无分享开关）
        desktop VISIBILITY='private'，TreeholeTab.visibility='private'；树洞请求体字段 = entry_id/content/mood_tag
 [PASS] 树洞条目显示情绪卡片（mood_tag 可见，不再是 hover 才见的 tooltip）
@@ -110,19 +110,29 @@ MindCare 学生端自检全文（生成时间：2026-10-03 04:01:38+0800）
 [PASS] request_help=true 的行能被单独识别（契约强制 consent_share == request_help）
        request_help=true 的 record_id=['rec_demo_help']
 [PASS] 档案页零已下线能力入口（无记录级按钮、无下线能力文案）
-       禁用词 43 条（推导自文案表键 ['s.revoke.', 's.end.revoked.', 's.q25.title', 's.q25.subtitle', 's.q25.disclosure.', 's.q25.followup.', 's.q25.sensitive.', 's.notice.item4', 's.notice.item5', 's.notice.item6']）；扫描 38 个控件 → 命中 0；档案页按钮 1 个（仅允许『再试一次』），记录级按钮=0
+       禁用词 43 条（推导自文案表键 ['s.revoke.', 's.end.revoked.', 's.q25.title', 's.q25.subtitle', 's.q25.disclosure.', 's.q25.followup.', 's.q25.sensitive.', 's.notice.item4', 's.notice.item5', 's.notice.item6']）；扫描 48 个控件 → 命中 0；档案页按钮 5 个（允许 刷新 + 面包屑 + 周导航，共 5 种文案），记录级按钮=0
+[PASS] 面包屑「情绪可视化」→ 切到图表视图
+       view_stack.currentIndex=1（应 1）
+[PASS] 图表接收每日情绪点（有数据 → 空态隐藏）
+       has_data=True；空态可见=False
+[PASS] 图表把情绪映射为 1/2/3（沮丧/平淡/高兴）
+       week=2026-09-28~2026-10-04；_mood={'2026-09-28': 'down', '2026-09-30': 'plain', '2026-10-02': 'happy'}
+[PASS] 「下一周」切换图表所在周
+       标题 '一周情绪  2026-09-28 ~ 2026-10-04' → '一周情绪  2026-10-05 ~ 2026-10-11'
+[PASS] 面包屑「档案记录」→ 切回记录列表
+       view_stack.currentIndex=0（应 0）
 [PASS] 所有可点控件 StrongFocus（键盘可达）
-       按钮 207 个，非 StrongFocus 0 个
+       按钮 211 个，非 StrongFocus 0 个
 [PASS] QSS 有可见 focus 样式
        QSS 含 'QPushButton:focus { border: 2px solid #7FA6BA; }'
 [PASS] 截图成功且 ≥ 5 张
-       01_login.png 52765 bytes；02_questionnaire_notice.png 71975 bytes；03_q1_mood.png 71975 bytes；03b_explore.png 71975 bytes；04_q3_detail.png 71975 bytes；05_help_choice.png 71975 bytes；05b_appointment_grid.png 73836 bytes；06_result_self_care.png 83977 bytes；07_treehole.png 90140 bytes；08_profile.png 68237 bytes；09_engine_not_ready.png 58520 bytes；10_about.png 77802 bytes
+       01_login.png 52778 bytes；02_questionnaire_notice.png 78546 bytes；03_q1_mood.png 78546 bytes；03b_explore.png 78546 bytes；04_q3_detail.png 78546 bytes；05_help_choice.png 78546 bytes；05b_appointment_grid.png 78622 bytes；06_result_self_care.png 89905 bytes；07_treehole.png 100392 bytes；08_profile.png 77784 bytes；08b_mood_chart.png 88542 bytes；09_engine_not_ready.png 64634 bytes；10_about.png 83728 bytes
 [PASS] 截图为真实渲染（不同颜色数远超纯色底）
-       不同颜色数（隔点采样）：01_login.png=197、02_questionnaire_notice.png=290、03_q1_mood.png=290、03b_explore.png=290、04_q3_detail.png=290、05_help_choice.png=290、05b_appointment_grid.png=310、06_result_self_care.png=328、07_treehole.png=386、08_profile.png=280、09_engine_not_ready.png=234、10_about.png=286
+       不同颜色数（隔点采样）：01_login.png=197、02_questionnaire_notice.png=335、03_q1_mood.png=335、03b_explore.png=335、04_q3_detail.png=335、05_help_choice.png=335、05b_appointment_grid.png=311、06_result_self_care.png=346、07_treehole.png=410、08_profile.png=304、08b_mood_chart.png=327、09_engine_not_ready.png=254、10_about.png=303
 [PASS] 关键页面无硬编码中文界面文案（文案均来自 COPY）
-       AST 扫描 9 个文件，命中『会进入界面』的中文字面量 0 个 → 非文案来源的可疑项 0 个
+       AST 扫描 10 个文件，命中『会进入界面』的中文字面量 0 个 → 非文案来源的可疑项 0 个
 [PASS] 启动即调用 GET /health（应用里第一次真正用它）
-       health_checked=True；payload={"status": "ok", "version": "1.0.0-stub", "server_time": "2026-10-03T04:01:26+08:00", "engine_ready": true}；本窗口实际请求记录=['GET /health']
+       health_checked=True；payload={"status": "ok", "version": "1.0.0-stub", "server_time": "2026-10-03T06:51:01+08:00", "engine_ready": true}；本窗口实际请求记录=['GET /health']
 [PASS] engine_ready=true → 无提示、提交按钮可用
        engine_ready=True；提示条可见=False；提交按钮 enabled=[True, True, True]
 [PASS] engine_ready=false → 非阻塞提示可见（文案来自文案表键 c.engine.notReady）
@@ -138,7 +148,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 04:01:38+0800）
 [PASS] 登录态默认路径 = %LOCALAPPDATA%\MindCare\session.json（路径不写死、不落工程目录）
        session_dir() 默认=C:\Users\admin\AppData\Local\MindCare；session_file() 默认=C:\Users\admin\AppData\Local\MindCare\session.json；LOCALAPPDATA='C:\\Users\\admin\\AppData\\Local'；是否位于工程目录(C:\Users\admin\Desktop\2026_10_02_MindCare-服务端(1)\MindCare-前端交付包(1))下=False；本次自检实际使用（MINDCAKE_SESSION_DIR 覆盖）=C:\Users\admin\AppData\Local\Temp\mindcare-selfcheck-session\session.json
 [PASS] 登录成功后 session 文件确实写入（含 token / profile / saved_at）
-       路径=C:\Users\admin\AppData\Local\Temp\mindcare-selfcheck-session\session.json（268 bytes）；token=persiste…（打码，原文 30 字符）；profile.id='2023001'；saved_at=1790971287.603512；expires_in=43200；expires_at-saved_at=43200s（契约 43200s=12h）
+       路径=C:\Users\admin\AppData\Local\Temp\mindcare-selfcheck-session\session.json（270 bytes）；token=persiste…（打码，原文 30 字符）；profile.id='2023001'；saved_at=1790981462.1026194；expires_in=43200；expires_at-saved_at=43200s（契约 43200s=12h）
 [PASS] 号次 2023001 原样发出（v1.1 注册制：不补前缀）且带密码
        POST /auth/login body=[{"role": "student", "id": "2023001", "password": "1234"}]；normalize_student_no('2023001')='2023001'
 [PASS] 模拟重启：新 ApiClient + 新窗口 → 直接进主窗（不再弹登录页）
@@ -184,7 +194,7 @@ MindCare 学生端自检全文（生成时间：2026-10-03 04:01:38+0800）
 [PASS] 同一时刻的不同写法 → 同一（Asia/Shanghai）结果，不受本机时区影响
        +08:00 写法='10月2日 21:40'；+00:00 写法='10月2日 21:40'；Z 写法='10月2日 21:40'
 [PASS] 刚刚记录的时间戳（今天）也用同一套『M月D日 HH:MM』写法
-       now_iso()='2026-10-03T04:01:36+08:00' → '10月3日 04:01'（对比 2026-10-02T21:40:00+08:00 → '10月2日 21:40'）
+       now_iso()='2026-10-03T06:51:10+08:00' → '10月3日 06:51'（对比 2026-10-02T21:40:00+08:00 → '10月2日 21:40'）
 [PASS] 今天与往日用**同一套**写法（M月D日 HH:MM），同一列表内可直接扫读
        今天样例（2026-10-02）='10月2日 21:40'；往日样例（2026-09-15T21:40:00+08:00）='9月15日 21:40'；长度一致=True（两次都是两位数日号）
 [PASS] 异常输入（None / '' / 'not-a-ts' / 非法日期 / 非字符串）不抛异常
@@ -202,12 +212,52 @@ MindCare 学生端自检全文（生成时间：2026-10-03 04:01:38+0800）
 [PASS] 界面用到的键都真实存在（不会渲染成『⟪缺文案:…⟫』）
        'c.engine.notReady'='数据库正在恢复，稍等一下再试就好。'；'c.engine.notReady.action'='现在还不能提交，等一会儿再试一次。'；c.login.studentNo.format='号次是你的编号，注册后用它登录。'
 [PASS] build_appointment_record 组装出契约字段（v1.0 的 11 个一个不少）
-       {"apt_id": "apt_a95eb7843e6f", "class_name": "初二(3)班", "created_ts": "2026-10-03T04:01:38+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}
+       {"apt_id": "apt_fd4beaa113b6", "class_name": "初二(3)班", "created_ts": "2026-10-03T06:51:13+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}
 [PASS] v1.1 追加课表定位：period / weekday / time_start / time_end / slot
        period=7 weekday=6 15:11-16:00 slot=2026-10-03#7
 [PASS] append → list 一条预约可读回，字段与 ID 前缀一致
-       [{"apt_id": "apt_a95eb7843e6f", "class_name": "初二(3)班", "created_ts": "2026-10-03T04:01:38+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}]
+       [{"apt_id": "apt_fd4beaa113b6", "class_name": "初二(3)班", "created_ts": "2026-10-03T06:51:13+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}]
 [PASS] 坏行跳过 + 空记录不写（坏数据不崩、宁可缺）
-       [{"apt_id": "apt_a95eb7843e6f", "class_name": "初二(3)班", "created_ts": "2026-10-03T04:01:38+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}, {"apt_id": "apt_d009e4242560", "class_name": null, "created_ts": "2026-10-03T04:01:38+08:00", "day": "4", "month": "10", "name": "", "period": "2", "share_questionnaire": false, "share_treehole": true, "slot": "2026-10-04#2", "student_id": "stu_2023002", "time": "09:00", "time_end": "09:35", "time_start": "08:50", "weekday": "7", "year": "2026"}]
+       [{"apt_id": "apt_fd4beaa113b6", "class_name": "初二(3)班", "created_ts": "2026-10-03T06:51:13+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}, {"apt_id": "apt_c4c55ad1ad83", "class_name": null, "created_ts": "2026-10-03T06:51:13+08:00", "day": "4", "month": "10", "name": "", "period": "2", "share_questionnaire": false, "share_treehole": true, "slot": "2026-10-04#2", "student_id": "stu_2023002", "time": "09:00", "time_end": "09:35", "time_start": "08:50", "weekday": "7", "year": "2026"}]
+[PASS] mock server 可达
+       GET /health → {"status": "ok", "version": "1.1.0", "server_time": "2026-10-03T06:51:13+08:00", "engine_ready": true}
+[PASS] 健康检查返回的版本号是 v1.1 服务端
+       version='1.1.0'
+[PASS] ① 注册+登录：UI 点击 → QThreadPool → POST /auth/login
+       token=d93db206…；profile={"id": "stu_2023001", "name": "林小满", "class_name": "高一(2)班", "role": "student"}
+[PASS] 逐题跳转纯本地（走到 Q3 仍未产生任何提交请求）
+       路径 notice→q1→explore→'q3'；submit_requested 触发次数=0
+[PASS] 只在最后一屏触发一次提交请求
+       submit_requested 触发次数=1；body={"cause_category": "study", "consent_share": false, "consent_ts": null, "detail": "最近三次月考排名连续下滑，晚自习完全无法集中，看到卷子就心慌。", "mood": "down", "plain_note": null, "record_id": "", "request_help": false}
+[PASS] 提交 payload 只有 v1.0 的 8 个字段（无 v1.1 的 material 字段）
+       实际字段=['cause_category', 'consent_share', 'consent_ts', 'detail', 'mood', 'plain_note', 'record_id', 'request_help']；契约 v1.0 白名单=['cause_category', 'consent_share', 'consent_ts', 'detail', 'mood', 'plain_note', 'record_id', 'request_help']
+[PASS] ② 提交问卷：一次性 POST /questionnaire/submissions → 结果页
+       result_scene='self_care'（down + request_help=false → self_care）；当前页='result_self_care'；record_id='rec_c8bd48e60391'
+[PASS] ③ 拉档案：GET /profile/me → 档案页渲染本次记录
+       date=2026-10-03；行数=12；本次提交='rec_c8bd48e60391'；状态标签=['已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：内容只留在你这里。', '已选择：老师可以看到你这次写的内容。']
+[PASS] 档案里每条的状态标签都与它的 request_help 一致
+       逐条核对 12 行：rec_c8bd48e603…=只留给自己、rec_71574e6415…=只留给自己、rec_38832ae2eb…=只留给自己、rec_72ee5d5f82…=只留给自己、rec_7592a9e885…=只留给自己、rec_3e1aa896cb…=只留给自己
+[PASS] GET /profile/me 响应里该条 request_help=false（本次选了"不用帮助"）
+       该条响应={"record_id": "rec_c8bd48e60391", "ts": "2026-10-03T06:51:13+08:00", "mood": "down", "cause_category": "study", "detail": "最近三次月考排名连续下滑，晚自习完全无法集中，看到卷子就心慌。", "request_help": false}
+[PASS] GET /profile/me 响应结构 = v1.0 的 6 个字段（不含 consent_share）
+       实际字段=['cause_category', 'detail', 'mood', 'record_id', 'request_help', 'ts']；v1.0 应为 record_id/ts/mood/cause_category/detail/request_help
+[PASS] [期望 1001] 坏 token 访问学生接口 → 1001（未登录/过期）
+       实际 ApiError(code=1001, field=None, message='未登录或 token 过期')
+[PASS] [期望 1002] 学生访问教师接口 → 1002（角色越界）
+       实际 ApiError(code=1002, field=None, message='无权限')
+[PASS] [期望 2001] 缺 detail 提交 → 2001（message 带字段名）
+       实际 ApiError(code=2001, field='detail', message='字段 detail 校验失败：必须是非空字符串')
+[PASS] [期望 2001] happy 但 request_help=true → 2001（矩阵第 1 行）
+       实际 ApiError(code=2001, field='mood', message='mood=happy 时不得携带原因/详情/求助')
+[PASS] [期望 2002] 未注册的号次 → 2002（学生不存在）
+       实际 ApiError(code=2002, field=None, message='学生不存在')
+[PASS] [期望 2001] 非法日期拉档案 → 2001（服务端把 date 校验失败归到 2001；见下方说明）
+       实际 ApiError(code=2001, field='date', message='字段 date 校验失败：日期不存在')
+[PASS] 同 token 1 分钟 >10 次提交 → 4001（契约 §2.3 限流）
+       12 次提交的错误码序列=[None, None, None, None, None, None, None, None, None, 4001, 4001, 4001]（None = 成功；4001 出现在第 10 次）
+[PASS] 主线程从未调用 ApiClient 传输层（UI约定 §3/§7）
+       STATS={"transport_calls_main_thread": 0, "transport_calls_worker_thread": 27, "worker_runs": 29, "worker_thread_names": ["Dummy-100", "Dummy-101", "Dummy-102", "Dummy-103", "Dummy-104", "Dummy-105", "Dummy-106", "Dummy-107", "Dummy-108", "Dummy-109", "Dummy-110", "Dummy-111", "Dummy-112", "Dummy-113", "Dummy-114", "Dummy-115", "Dummy-116", "Dummy-117", "Dummy-118", "Dummy-90", "Dummy-91", "Dummy-92", "Dummy-93", "Dummy-94", "Dummy-95", "Dummy-96", "Dummy-97", "Dummy-98", "Dummy-99"]}；worker 线程名=['Dummy-100', 'Dummy-101', 'Dummy-102', 'Dummy-103', 'Dummy-104', 'Dummy-105', 'Dummy-106', 'Dummy-107', 'Dummy-108', 'Dummy-109', 'Dummy-110', 'Dummy-111', 'Dummy-112', 'Dummy-113', 'Dummy-114', 'Dummy-115', 'Dummy-116', 'Dummy-117', 'Dummy-118', 'Dummy-90', 'Dummy-91', 'Dummy-92', 'Dummy-93', 'Dummy-94', 'Dummy-95', 'Dummy-96', 'Dummy-97', 'Dummy-98', 'Dummy-99']
+[PASS] 所有网络请求都真的在 QThreadPool 线程里执行
+       worker 执行 29 次，worker 线程上传输层调用 27 次
 
-共 104 项：通过 104，未通过 0
+共 129 项：通过 129，未通过 0

@@ -342,6 +342,21 @@ def main() -> int:
                  "params": {"year": "2026", "month": "12"}})
     ok(any(w["wait_id"] == "wait_b" for w in wlist["items"]), "候补列表含 waiting 条目")
 
+    # 34 情绪可视化端点：区间内每日 mood（取当天最新一条，同日多次以 rowid 断序）
+    today = sched.today_str()
+    call("POST", "/questionnaire/submissions", token=stu_token,
+         body={"record_id": "rec_mood_probe", "mood": "happy", "plain_note": None,
+               "cause_category": None, "detail": None,
+               "request_help": False, "consent_share": False, "consent_ts": None})
+    mr = call("GET", "/profile/mood/range",
+              query={"start": today, "end": today}, token=stu_token)
+    ok(bool(mr.get("items")) and mr["items"][0]["date"] == today
+       and mr["items"][0]["mood"] == "happy",
+       "情绪区间端点返回每日最新 mood（happy）")
+    empty = call("GET", "/profile/mood/range",
+                 query={"start": "2020-01-01", "end": "2020-01-07"}, token=stu_token)
+    ok(empty.get("items") == [], "区间无记录 → 空 items")
+
     print()
     if fails:
         print(f"自检未通过：{len(fails)} 项")

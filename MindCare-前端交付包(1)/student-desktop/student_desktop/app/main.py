@@ -612,6 +612,7 @@ class StudentMainWindow(QMainWindow):
 
         self.profile_page.dates_requested.connect(self._load_profile_dates)
         self.profile_page.profile_requested.connect(self._load_profile)
+        self.profile_page.mood_range_requested.connect(self._load_mood_range)
 
         self.appointment_page.confirmed.connect(self._on_standalone_appointment_confirmed)
         self.tabs.currentChanged.connect(self._on_tab_changed)
@@ -1094,6 +1095,18 @@ class StudentMainWindow(QMainWindow):
         self.profile_page.set_profile(data or {})
 
     def _on_profile_failed(self, error: Any) -> None:
+        if self.handle_failure(error):      # 1001 → 已切回登录页
+            return
+        self.profile_page.show_error(self.error_text(error))
+
+    def _load_mood_range(self, start: str, end: str) -> None:
+        self._start("mood_range", self.client.my_mood_range, start, end,
+                    on_done=self._on_mood_range, on_fail=self._on_mood_range_failed)
+
+    def _on_mood_range(self, data: Any) -> None:
+        self.profile_page.set_mood_range(list((data or {}).get("items") or []))
+
+    def _on_mood_range_failed(self, error: Any) -> None:
         if self.handle_failure(error):      # 1001 → 已切回登录页
             return
         self.profile_page.show_error(self.error_text(error))

@@ -18,13 +18,17 @@
 """
 from __future__ import annotations
 
+from datetime import date, timedelta
 from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QHBoxLayout,
+    QPushButton,
     QScrollArea,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -42,6 +46,8 @@ from desktop_common.widgets import (
     make_hint,
     make_title,
 )
+
+from .mood_chart import MoodChartWidget
 
 __all__ = ["ProfileTab", "RecordRow", "MOOD_COPY", "CAUSE_COPY", "STATUS_COPY"]
 
@@ -130,17 +136,22 @@ class RecordRow(Card):
 
 
 class ProfileTab(QWidget):
-    """「我的档案」：按日选择 + 历史列表 + 日期打点。"""
+    """「我的档案」：按日选择 + 历史列表 + 日期打点 + 情绪可视化。"""
 
     dates_requested = Signal()
     #: 请求某天档案（含提交与树洞）
     profile_requested = Signal(str)
+    #: 请求某周情绪点（start, end；周一~周日）
+    mood_range_requested = Signal(str, str)
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setObjectName("ProfileTab")
         self._rows: List[RecordRow] = []
         self._dates: List[str] = []
+        self._week_start: date = self._monday_of(date.today())
+        self._week_initialized = False
+        self._chart_mood: Dict[str, str] = {}
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(24, 20, 24, 20)
@@ -163,6 +174,27 @@ class ProfileTab(QWidget):
         header.add_layout(picker_row)
         outer.addWidget(header)
 
+        # 面包屑导航：档案记录 / 情绪可视化
+        breadcrumb = QHBoxLayout()
+        breadcrumb.setSpacing(8)
+        self._view_group = QButtonGroup(self)
+        self._view_group.setExclusive(True)
+        self.records_btn = QPushButton(COPY["c.profile.view.records"])
+        self.chart_btn = QPushButton(COPY["c.profile.view.chart"])
+        for index, (btn, handler) in enumerate(
+                ((self.records_btn, self._show_records),
+                 (self.chart_btn, self._show_chart))):
+            btn.setObjectName("ProfileViewButton")
+            btn.setCheckable(True)
+            btn.setFocusPolicy(Qt.StrongFocus)
+            btn.setCursor(Qt.PointingHandCursor)
+            btn.clicked.connect(handler)
+            self._view_group.addButton(btn, index)
+            breadcrumb.addWidget(btn)
+        breadcrumb.addStretch(1)
+        outer.addLayout(breadcrumb)
+        self.records_btn.setChecked(True)
+
         self.toast = make_hint("")
         self.toast.setObjectName("ProfileToast")
         self.toast.setVisible(False)
@@ -170,6 +202,10 @@ class ProfileTab(QWidget):
 
         self.error_label = make_error("")
         outer.addWidget(self.error_label)
+
+        # 内容栈：记录列表 / 情绪可视化
+        self.view_stack = QStackedWidget()
+        self.view_stack.setObjectName("ProfileViewStack")
 
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)
@@ -182,12 +218,89 @@ class ProfileTab(QWidget):
         self.list_layout.addWidget(self.empty_label)
         self.list_layout.addStretch(1)
         self.scroll.setWidget(holder)
-        outer.addWidget(self.scroll, 1)
+        self.view_stack.addWidget(self.scroll)
+
+        self.view_stack.addWidget(self._build_chart_view())
+        outer.addWidget(self.view_stack, 1)
 
         footer = Card()
         footer.add(make_hint(COPY["c.hotline.footer"]))
         footer.add(hotline_label(COPY.hotline_line()))
         outer.addWidget(footer)
+
+    # ---------------------------------------------------------------- 情绪可视化
+    @staticmethod
+    def _monday_of(anchor: date) -> date:
+        return anchor - timedelta(days=anchor.weekday())
+
+    def _week_days(self) -> List[str]:
+        return [(self._week_start + timedelta(days=i)).strftime("%Y-%m-%d")
+                for i in range(7)]
+
+    def _build_chart_view(self) -> QWidget:
+        chart_view = QWidget()
+        chart_view.setObjectName("ProfileChartView")
+        lay = QVBoxLayout(chart_view)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.setSpacing(10)
+
+        card = Card()
+        head = QHBoxLayout()
+        self.week_prev_btn = make_ghost_button(COPY["c.profile.chart.week.prev"])
+        self.week_prev_btn.clicked.connect(self._prev_week)
+        head.addWidget(self.week_prev_btn)
+        self.week_title = make_heading(COPY["c.profile.chart.title"])
+        self.week_title.setAlignment(Qt.AlignCenter)
+        head.addWidget(self.week_title, 1)
+        self.week_next_btn = make_ghost_button(COPY["c.profile.chart.week.next"])
+        self.week_next_btn.clicked.connect(self._next_week)
+        head.addWidget(self.week_next_btn)
+        card.add_layout(head)
+
+        self.chart = MoodChartWidget()
+        card.add(self.chart)
+        self.chart_empty = make_hint(COPY["c.profile.chart.empty"])
+        self.chart_empty.setAlignment(Qt.AlignCenter)
+        self.chart_empty.setVisible(False)
+        card.add(self.chart_empty)
+        lay.addWidget(card)
+        lay.addStretch(1)
+        return chart_view
+
+    def _show_records(self) -> None:
+        self.view_stack.setCurrentWidget(self.scroll)
+
+    def _show_chart(self) -> None:
+        self.view_stack.setCurrentIndex(1)
+        self._emit_mood_request()
+
+    def _prev_week(self) -> None:
+        self._week_start -= timedelta(days=7)
+        self._emit_mood_request()
+
+    def _next_week(self) -> None:
+        self._week_start += timedelta(days=7)
+        self._emit_mood_request()
+
+    def _emit_mood_request(self) -> None:
+        days = self._week_days()
+        self._render_week(days)
+        self.mood_range_requested.emit(days[0], days[-1])
+
+    def _render_week(self, days: List[str]) -> None:
+        self.week_title.setText(
+            f"{COPY['c.profile.chart.title']}  {days[0]} ~ {days[-1]}")
+        self.chart.set_week(days)
+        self.chart.set_mood(self._chart_mood)
+        self.chart_empty.setVisible(not self.chart.has_data())
+
+    def set_mood_range(self, items: List[dict]) -> None:
+        """渲染某周情绪点（`GET /profile/mood/range` 的 `items`）。"""
+        self._chart_mood = {
+            str(it.get("date")): str(it.get("mood"))
+            for it in (items or []) if it.get("mood")
+        }
+        self._render_week(self._week_days())
 
     # ---------------------------------------------------------------- 数据
 
@@ -204,6 +317,16 @@ class ProfileTab(QWidget):
         if incoming == self._dates and incoming:
             return
         self._dates = incoming
+        # 首次拿到有记录日期时，把情绪图默认定位到最近一次记录所在的那一周
+        if incoming and not self._week_initialized:
+            try:
+                self._week_start = self._monday_of(date.fromisoformat(incoming[0]))
+            except (ValueError, IndexError):
+                pass
+            self._week_initialized = True
+        if not incoming:
+            self._week_start = self._monday_of(date.today())
+            self._week_initialized = False
         self.day_picker.blockSignals(True)
         self.day_picker.clear()
         for day in self._dates:

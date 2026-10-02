@@ -491,6 +491,11 @@ class ApiClient:
         """`GET /profile/me/dates`。"""
         return self.request("GET", "/profile/me/dates") or {}
 
+    def my_mood_range(self, start: str, end: str) -> dict:
+        """`GET /profile/mood/range?start=&end=`（学生：一周情绪点，每日取最新一次 mood）。"""
+        return self.request("GET", "/profile/mood/range",
+                            query={"start": start, "end": end}) or {}
+
     def create_treehole(self, body: dict) -> dict:
         """`POST /treehole/entries`（L0 绝对私密，无分享字段）。"""
         return self.request("POST", "/treehole/entries", body=body, idempotent=True) or {}

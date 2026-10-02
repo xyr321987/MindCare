@@ -31,6 +31,7 @@ ROUTES = [
     ("POST",   "/questionnaire/submissions",     "student",  "submit_questionnaire"),
     ("GET",    "/profile/me",                    "student",  "my_profile"),
     ("GET",    "/profile/me/dates",              "student",  "my_dates"),
+    ("GET",    "/profile/mood/range",            "student",  "mood_range"),
     ("POST",   "/treehole/entries",              "student",  "create_treehole"),
     ("GET",    "/treehole/entries",              "student",  "my_treehole"),
     ("GET",    "/tips",                          "student",  "tips"),
@@ -95,6 +96,9 @@ class App:
             return engine.my_profile(db, subject, query.get("date") or sched.today_str())
         if handler == "my_dates":
             return engine.my_dates(db, subject)
+        if handler == "mood_range":
+            return engine.mood_range(db, subject,
+                                     query.get("start") or "", query.get("end") or "")
         if handler == "create_treehole":
             return engine.create_treehole(db, subject, body)
         if handler == "my_treehole":

@@ -389,6 +389,22 @@ QPushButton#NavItem:checked {{
     color: {NAV_ACTIVE_TEXT};
     font-weight: 600;
 }}
+/* 档案页面包屑（档案记录 / 情绪可视化）*/
+QPushButton#ProfileViewButton {{
+    background: transparent;
+    color: {INK_SOFT};
+    padding: 6px 16px;
+    border: none;
+    border-radius: 16px;
+    min-height: {MIN_TAP - 4}px;
+    font-size: {FONT_SMALL}px;
+}}
+QPushButton#ProfileViewButton:hover {{ color: {INK}; background: {NAV_HOVER_BG}; }}
+QPushButton#ProfileViewButton:checked {{
+    background: {MIST};
+    color: {PRIMARY_INK};
+    font-weight: 600;
+}}
 QLabel#NavUserName {{ font-size: 14px; font-weight: 600; color: {INK}; }}
 QLabel#NavUserClass {{ font-size: 12px; color: {INK_SOFT}; }}
 QWidget#NavUserCard {{ background: transparent; }}
