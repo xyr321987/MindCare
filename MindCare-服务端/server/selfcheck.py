@@ -1,0 +1,193 @@
+"""契约自检 —— 直接驱动 App.dispatch 跑 spec §10 的闭环（不依赖真 HTTP 端口）。
+
+用法（在 MindCare-服务端 目录）：
+    python -m server.selfcheck
+成功打印全 ✓ 并 exit 0；任一失败打印 ✗ 并 exit 1。
+"""
+from __future__ import annotations
+
+import sys
+from typing import Optional
+
+from server.db import Database
+from server.httpd import App
+from server import engine
+
+
+def main() -> int:
+    fails: list[str] = []
+    db = Database(":memory:")
+    app = App(db)
+
+    def ok(cond, label):
+        print(("  ✓ " if cond else "  ✗ ") + label)
+        if not cond:
+            fails.append(label)
+
+    def call(method, path, body=None, query=None, token=None):
+        return app.dispatch(method, path, query or {}, body or {}, token)
+
+    def expect_err(method, path, body, token, code, label):
+        try:
+            call(method, path, body=body, token=token)
+        except engine.ApiError as e:
+            ok(e.code == code, f"{label} → {e.code}（期望 {code}）")
+            return
+        except Exception as e:  # noqa
+            ok(False, f"{label} → 异常 {type(e).__name__}:{e}")
+            return
+        ok(False, f"{label} → 未抛错（期望 {code}）")
+
+    # 1 健康
+    h = call("GET", "/health")
+    ok(h.get("engine_ready") is True, "健康检查 engine_ready=true")
+
+    # 2 学生注册
+    reg = call("POST", "/auth/register",
+               body={"class_name": "高一(2)班", "name": "林小满", "seat_no": "2023001", "password": "1234"})
+    ok(reg.get("token") and reg["profile"]["id"] == "stu_2023001", "学生注册 → token+profile")
+    stu_token = reg["token"]
+
+    # 3 重复注册
+    expect_err("POST", "/auth/register",
+               {"class_name": "x", "name": "y", "seat_no": "2023001", "password": "1234"},
+               None, 2001, "重复号次注册")
+
+    # 4 密码错误
+    expect_err("POST", "/auth/login", {"role": "student", "id": "2023001", "password": "wrong"},
+               None, 1001, "学生密码错误")
+
+    # 5 正确登录
+    lg = call("POST", "/auth/login", {"role": "student", "id": "2023001", "password": "1234"})
+    ok(bool(lg.get("token")), "学生登录成功")
+    stu_token = lg["token"]
+
+    # 6 教师登录
+    tlogin = call("POST", "/auth/login", {"role": "teacher", "id": "tch_T001", "password": "mindcare123"})
+    ok(bool(tlogin.get("token")), "教师登录成功（预置口令）")
+    tea_token = tlogin["token"]
+
+    # 7 happy 提交 → 无工单
+    r = call("POST", "/questionnaire/submissions", token=stu_token,
+             body={"record_id": "rec_happy1", "mood": "happy", "plain_note": None,
+                   "cause_category": None, "detail": None, "request_help": False,
+                   "consent_share": False, "consent_ts": None})
+    ok(r["result_scene"] == "happy_end", "happy → happy_end")
+    ok(db.query_one("SELECT 1 FROM tickets WHERE student_id='stu_2023001'") is None, "happy 不建工单")
+
+    # 8 down+求助 → 建 ticket
+    r = call("POST", "/questionnaire/submissions", token=stu_token,
+             body={"record_id": "rec_down_help", "mood": "down", "plain_note": None,
+                   "cause_category": "study", "detail": "最近三次月考排名连续下滑……",
+                   "request_help": True, "consent_share": True, "consent_ts": "2026-10-02T22:31:05+08:00"})
+    ok(r["result_scene"] == "help_sent", "down+求助 → help_sent")
+    tkt = db.query_one("SELECT * FROM tickets WHERE student_id='stu_2023001' AND status='pending'")
+    ok(tkt is not None, "down+求助 自动建 ticket(pending)")
+
+    # 9 幂等：同 record_id 重发不重复落库
+    call("POST", "/questionnaire/submissions", token=stu_token,
+         body={"record_id": "rec_happy1", "mood": "happy", "plain_note": None,
+               "cause_category": None, "detail": None, "request_help": False,
+               "consent_share": False, "consent_ts": None})
+    cnt = db.query_one("SELECT COUNT(*) AS c FROM questionnaire_submissions WHERE record_id='rec_happy1'")["c"]
+    ok(cnt == 1, f"幂等：同 record_id 只落 1 行（实际 {cnt}）")
+
+    # 10 学生自助预约（共享问卷）
+    apt = call("POST", "/appointments", token=stu_token,
+               body={"apt_id": "apt_self1", "year": "2026", "month": "10", "day": "3",
+                     "time": "15:00", "share_questionnaire": True, "share_treehole": False})
+    ok(apt.get("apt_id") == "apt_self1", "学生自助预约落库")
+    row = db.query_one("SELECT * FROM appointments WHERE apt_id='apt_self1'")
+    ok(row and row["slot"] and row["period"], "预约派生出 slot/period")
+
+    # 11 同 slot 重复预约被拒
+    expect_err("POST", "/appointments",
+               {"apt_id": "apt_self2", "year": "2026", "month": "10", "day": "3",
+                "time": "15:00", "share_questionnaire": False, "share_treehole": False},
+               stu_token, 2001, "同 slot 二次预约被拒")
+
+    # 12 可见性：教师看今天数据（共享问卷可见、树洞不可见）
+    today = call("GET", "/triage/students/stu_2023001/today", token=tea_token)
+    ok(today["has_shared_records"] is True, "教师端 has_shared_records=true")
+    ok(len(today["shared_records"]) >= 1, "shared_records 含当天问卷")
+    ok(today["shared_treehole"] == [], "未共享树洞 → shared_treehole 为空")
+    ok(len(today["tickets"]) >= 1, "student_today 返回 tickets（消除 G-1）")
+
+    # 13 树洞 + 共享树洞
+    call("POST", "/treehole/entries", token=stu_token,
+         body={"entry_id": "tre_1", "content": "今天有点低落", "mood_tag": "down"})
+    call("POST", "/appointments", token=stu_token,
+         body={"apt_id": "apt_self3", "year": "2026", "month": "10", "day": "4",
+               "time": "16:05", "share_questionnaire": False, "share_treehole": True})
+    today2 = call("GET", "/triage/students/stu_2023001/today", token=tea_token)
+    ok(len(today2["shared_treehole"]) >= 1, "共享树洞 → shared_treehole 可见")
+
+    # 14 教师待预约列表（工单级查询，R11）
+    pend = call("POST", "/db/read", token=tea_token, body={"resource": "appointments.pending", "params": {}})
+    ok(any(i["student_id"] == "stu_2023001" for i in pend["items"]), "待预约列表含该生工单")
+
+    # 15 教师代订 + 完成联动（决策 11）
+    sch = call("POST", "/db/write", token=tea_token, body={"action": "appointments.schedule",
+               "payload": {"student_id": "stu_2023001", "ticket_id": tkt["ticket_id"],
+                           "year": "2026", "month": "10", "day": "5", "time": "09:55", "note": "约谈"}})
+    ok(sch.get("status") == "scheduled", "教师代订 → scheduled")
+    ok(db.query_one("SELECT status FROM tickets WHERE ticket_id=?", (tkt["ticket_id"],))["status"] == "accepted",
+       "代订联动 ticket→accepted")
+    comp = call("POST", "/db/write", token=tea_token, body={"action": "appointments.complete",
+               "payload": {"appointment_id": sch["appointment_id"]}})
+    ok(comp["status"] == "done", "完成预约 → done")
+    ok(db.query_one("SELECT status FROM tickets WHERE ticket_id=?", (tkt["ticket_id"],))["status"] == "done",
+       "完成联动 ticket→done")
+
+    # 16 预警：学生 B 连续 3 次 down 不求助 → active；dismiss → dismissed
+    regb = call("POST", "/auth/register",
+                body={"class_name": "高一(1)班", "name": "陈默", "seat_no": "2023002", "password": "1234"})
+    b_token = regb["token"]
+    for i in range(3):
+        call("POST", "/questionnaire/submissions", token=b_token,
+             body={"record_id": f"rec_b_{i}", "mood": "down", "plain_note": None,
+                   "cause_category": "family", "detail": "家里有点烦",
+                   "request_help": False, "consent_share": False, "consent_ts": None})
+    wlist = call("POST", "/db/read", token=tea_token, body={"resource": "warnings.list", "params": {}})
+    act = [w for w in wlist["items"] if w["status"] == "active" and w["student_id"] == "stu_2023002"]
+    ok(len(act) == 1, "连续 3 次 down 不求助 → warning active")
+    dis = call("POST", "/db/write", token=tea_token, body={"action": "warnings.dismiss",
+               "payload": {"warning_id": act[0]["warning_id"], "note": "已约谈"}})
+    ok(dis["status"] == "dismissed", "dismiss → 留痕 dismissed")
+
+    # 17 回复库 + tips 合并
+    call("POST", "/db/write", token=tea_token, body={"action": "replies.create",
+         "payload": {"text": "自定义：先深呼吸十次。", "scenes": ["down"]}})
+    tip = call("GET", "/tips", query={"scene": "down"}, token=stu_token)
+    ok(tip["text"] == "自定义：先深呼吸十次。", "老师自定义回复覆盖默认 tips")
+
+    # 18 导出零正文
+    exp = call("POST", "/db/read", token=tea_token, body={"action": None, "resource": "export.rows",
+               "params": {"start": "2026-01-01", "end": "2026-12-31"}})
+    keys = set()
+    for row in exp["items"]:
+        keys |= set(row.keys())
+    ok(not (keys & {"detail", "plain_note", "content", "text"}), f"导出零正文（列 {sorted(keys)}）")
+
+    # 19 越权：学生打 /db/read → 1002
+    expect_err("POST", "/db/read", {"resource": "warnings.list", "params": {}},
+               stu_token, 1002, "学生访问 /db/read")
+    # 教师打树洞 → 1002（无路由；此处 route 只对学生开放，教师命中 1002 或 2002）
+    try:
+        call("GET", "/treehole/entries", query={"date": "2026-10-02"}, token=tea_token)
+        ok(False, "教师读树洞应被拒")
+    except engine.ApiError as e:
+        ok(e.code in (1002, 2002), f"教师读树洞被拒（{e.code}）")
+
+    print()
+    if fails:
+        print(f"自检未通过：{len(fails)} 项")
+        for f in fails:
+            print(" - " + f)
+        return 1
+    print(f"契约自检全部通过 ✓（闭环覆盖：注册/登录/问卷/树洞/预约/工单/预警/回复/导出/越权/幂等）")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -1,0 +1,144 @@
+{
+  "_meta": {
+    "file": "mindcare/server/copywriting.json",
+    "purpose": "GET /api/v1/tips 的运行时文案数据源；由 B 维护的 mindcare/copywriting.md 同步而来",
+    "owner": "B（内容设计）",
+    "consumer": "C · server/api（/tips 接口只做查询，改文案不改代码）",
+    "source_of_truth": "mindcare/copywriting.md",
+    "contract_keys": "键名对齐 contracts/api-contract.json enums.tips_scene = [\"plain\", \"down\"]；self_care 为自助建议页扩展键；revoke 为撤回同意文案（PIPL 第 15 条 / 契约 §2.3.1）",
+    "sync_note": "若本文件已被其他角色写入，只补充键值，不要改动或删除其已有键名结构",
+    "revoke_supported": true,
+    "revoke_contract": "PATCH /questionnaire/submissions/{record_id} body {consent_share:false}；只接受 false、不可逆；事件溯源追加 type='submission_revoked'，不物理删除记录；撤回后教师端不再可见该条正文，关联 pending 工单置 done",
+    "revoke_wording_rules": [
+      "撤回的是可见性，不是删除记录：禁用「删除/清除/抹掉/记录消失」",
+      "不得承诺可以恢复：想再让老师知道只能重新填一次问卷",
+      "不得写成「老师不会知道你说过什么」：分诊计数仍按原提交记录计算",
+      "主按钮不用「撤回/撤销」等法律术语，用「不让老师看了」；二次确认里再说明后果"
+    ],
+    "word_ban": ["抑郁", "焦虑", "障碍", "症状", "重度", "高危", "预警", "异常", "患者", "受试者"],
+    "id_map": {
+      "plain": "s.end.plain.tips",
+      "down": "s.end.selfcare.tips",
+      "self_care": "s.end.selfcare.body",
+      "revoke.entry_action": "s.revoke.entry.action",
+      "revoke.confirm_body": "s.revoke.confirm.body",
+      "revoke.confirm_irreversible": "s.revoke.confirm.irreversible",
+      "revoke.toast_done": "s.revoke.toast.done",
+      "revoke.badge_revoked": "s.revoke.badge.revoked",
+      "revoke.end_title": "s.end.revoked.title",
+      "revoke.end_body": "s.end.revoked.body"
+    }
+  },
+
+  "plain": "可以出去走走，晒到一点光；也可以和朋友随便聊两句，或者把今天记一句在树洞里。不用勉强自己「应该开心」。",
+  "down": "可以跟我做：慢慢呼吸几轮，或者出去走一小圈；也可以去树洞写写心里话。",
+  "self_care": "内容已经保存好了，只有你自己能看到。可以试一两件小事，也可以什么都不做，先歇一会儿。",
+
+  "plain_tips": {
+    "title": "今天平平淡淡的，也很好。",
+    "text": "可以出去走走，晒到一点光；也可以和朋友随便聊两句，或者把今天记一句在树洞里。不用勉强自己「应该开心」。",
+    "treehole_entry": true,
+    "closing": "如果哪天心里有点沉，随时回来和我说说。"
+  },
+  "down_tips": {
+    "title": "谢谢你愿意说出来。",
+    "text": "可以跟我做：慢慢呼吸几轮，或者出去走一小圈；也可以去树洞写写心里话。",
+    "treehole_entry": true,
+    "steps": [
+      "慢慢吸气 4 秒，停 7 秒，缓缓呼 8 秒，做 4 轮。",
+      "站起来走一走，走到能晒到光的地方，5 分钟就够。",
+      "心里的话写进树洞，这里只有你自己能看到。",
+      "找一个让你放松的人待一会儿，哪怕不说话。"
+    ]
+  },
+  "self_care_page": {
+    "title": "谢谢你愿意说出来。",
+    "body": "内容已经保存好了，只有你自己能看到。可以试一两件小事，也可以什么都不做，先歇一会儿。",
+    "treehole_action": "写树洞",
+    "close_action": "先这样，再见",
+    "hotline_title": "如果现在很难受，可以打这些电话",
+    "hotline_line": "全国统一心理援助热线 12356 ｜ 北京心理援助热线 010-82951332 ｜ 紧急情况拨打 120 / 110"
+  },
+
+  "happy_end": {
+    "title": "恭喜你今天有个好心情 🌿",
+    "body": "愿这份轻松多待一会儿。想留个纪念的话，可以去树洞写一句，以后翻到会很暖。"
+  },
+  "help_sent": {
+    "title": "已经送到老师那里了。",
+    "body": "你写的这段内容，心理老师会尽快看到，并且会以让你舒服的方式来找你。现在可以先把这件事放一放。"
+  },
+
+  "revoke": {
+    "badge_shared": "老师可以看到",
+    "badge_revoked": "只有你自己能看到",
+    "entry_action": "不让老师看了",
+    "entry_action_revoked": "已经不让老师看了",
+    "entry_hint": "点了之后，老师就看不到这一条了。",
+    "confirm_title": "不让老师看这一条了？",
+    "confirm_body": "老师那边就不会再看到这段内容了。",
+    "confirm_irreversible": "这一下点了就不能改回来。如果你之后又想告诉老师，需要重新填一次问卷。",
+    "confirm_keep_note": "你写下的内容不会消失，只是重新变成只有你自己能看到。",
+    "confirm_ok": "好，不让老师看了",
+    "confirm_cancel": "再想想",
+    "toast_done": "好，老师那边看不到这一条了。",
+    "toast_done_note": "内容还在这里，你可以随时回来看。",
+    "toast_failed": "刚才没改成，再试一次就好。",
+    "toast_already_revoked": "这一条已经是不让老师看的状态了。",
+    "toast_not_shared": "这一条本来就只有你自己能看到。",
+    "after_note": "这一条已经不让老师看了。内容还留在这里，你随时可以回来看。",
+    "after_relink": "想重新让老师知道，重新填一次问卷、在最后一步选「请求心理老师帮助」就可以。",
+    "errors": {
+      "1002": "这条记录不在你的档案里，所以没法操作。",
+      "2002": "没有找到这一条，可能已经不在档案里了。",
+      "2001_not_shared": "这一条本来就只有你自己能看到，不用再改。",
+      "2001_restore": "这里只能改成不让老师看，不能改回去。想再让老师知道，重新填一次问卷就好。",
+      "network": "网络好像有点慢，等会儿再试就好。"
+    },
+    "end_page": {
+      "result_scene": "consent_revoked",
+      "title": "已经改回只有你自己能看到了。",
+      "body": "老师那边不会再看到这一段。你写下的内容还留在这里，只是重新回到了你手里。",
+      "reassure": "改主意是你的权利，什么时候都算数。",
+      "back_action": "回到我的档案",
+      "close_action": "知道了",
+      "footer": "如果之后又想让老师知道，重新填一次、选「请求帮助」就可以。",
+      "hotline": "如果此刻很难受，随时可以打 12356，有人会接。"
+    }
+  },
+
+  "disclosure": {
+    "q25_anonymous": "你写的内容会以匿名方式转给学校相关部门（不包含你的姓名和班级）。",
+    "q25_sensitive": "这段内容会由心理老师来看。",
+    "q25_material_only": "这段内容只会转给学校相关部门，不会转给心理老师。"
+  },
+
+  "teacher_placeholder": {
+    "unshared_title": "该生选择暂不分享，可通过线下方式关心",
+    "unshared_body": "这次学生把内容留给了自己，这本身也是一种照顾自己的方式。你仍然可以像平常一样，在课间或课后和他聊两句，不用提这份问卷。",
+    "unshared_reminder": "名单上的排序还在，说明我们早知道要早点留意；但具体发生了什么，等他愿意说的时候再听。",
+    "unshared_revoked_note": "学生也可以在填完之后改主意，让某一条重新变成只有他自己能看到。出现这种情况时，说明他正在按自己的节奏来，不需要追问原因。"
+  },
+
+  "priority_labels": {
+    "1": "需要优先关心",
+    "2": "有待回应",
+    "3": "常规关注"
+  },
+
+  "errors": {
+    "1001": "登录状态过期了，重新登录一下就好。",
+    "1002": "这段内容还没有被分享，所以暂时看不到。",
+    "2001": "有一项还没有填写完整，检查一下再提交就好。",
+    "2002": "没有找到这段内容，可能已经被移走了。",
+    "3001": "这里出了点小状况，我们已经在看了，再试一次就好。",
+    "4001": "提交得有点快，歇一分钟再试就好。",
+    "network": "网络好像有点慢，等会儿再试就好。"
+  },
+
+  "hotlines": [
+    { "number": "12356", "label": "全国统一心理援助热线", "tel": "12356" },
+    { "number": "010-82951332", "label": "北京心理援助热线", "tel": "01082951332" },
+    { "number": "120 / 110", "label": "紧急情况（急救 / 报警）", "tel": "120" }
+  ]
+}

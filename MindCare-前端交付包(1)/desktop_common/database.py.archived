@@ -1,0 +1,259 @@
+"""学生端数据库访问接口（**待填充**）。
+
+这是 MindCare 学生端与数据库之间的**唯一**数据边界。本模块只提供两类接口，未来
+前端所有数据读写都收敛到这两处，不再散落在 11 个 HTTP 端点 + 本地 JSONL 里：
+
+1. **上传数据库** `upload(payload)`：把学生端产生的业务数据写入数据库；
+2. **读取数据库** `read(query)`：按查询条件从数据库读取学生端要展示的数据。
+
+⚠️ **待填充（TODO）**：本文件只给出**接口签名 + 数据结构定义**，不含真实实现。
+数据库团队按《学生端数据库接口说明.md》实现这两个方法后，前端即可联调。
+在实现完成前，调用 `upload` / `read` 会抛 `DatabaseError`。
+
+设计约定（详见说明文档）：
+* **登录/鉴权（token）走独立接口**，不混在这两个业务数据接口里；
+* 时间戳 ISO 8601 带时区（`2026-10-02T21:40:00+08:00`），日期 `YYYY-MM-DD`（Asia/Shanghai）；
+* ID 前缀：`rec_`（问卷）/ `tre_`（树洞）/ `apt_`（预约）/ `blk_`（不可预约段）/ `stu_`（学生）。
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Union
+
+__all__ = [
+    "DatabaseError", "DatabaseGateway", "get_gateway",
+    # 枚举取值（契约冻结口径）
+    "MOOD_VALUES", "CAUSE_VALUES", "RESULT_SCENES", "MOOD_TAG_VALUES",
+    "TICKET_STATUS_VALUES", "RESOURCE_TYPES", "DATA_TYPES",
+    # 数据结构（学生端在数据库中需求数据的结构与类型）
+    "StudentProfile", "QuestionnaireSubmission", "TreeholeEntry",
+    "Appointment", "Block", "Tip", "SessionInfo",
+    "UploadPayload", "ReadQuery",
+]
+
+# --------------------------------------------------------------------------- 枚举
+# 与契约 v1.0（`docs/api-contract.md`）冻结口径一致。
+
+#: 心情：`happy`（高兴）/ `plain`（平淡）/ `down`（沮丧）
+MOOD_VALUES = ("happy", "plain", "down")
+
+#: 情绪原因：`study`（学习）/ `relationship`（同学关系）/ `family`（家庭）
+CAUSE_VALUES = ("study", "relationship", "family")
+
+#: 问卷结果场景（前端据此渲染对应结束页）
+RESULT_SCENES = ("happy_end", "plain_tips", "help_sent", "self_care")
+
+#: 树洞心情标签（`null` 等价于 `none`，表示未选）
+MOOD_TAG_VALUES = ("none", "happy", "plain", "down")
+
+#: 求助工单状态：`pending`（待处理）/ `accepted`（已接）/ `done`（已办结，终态）
+TICKET_STATUS_VALUES = ("pending", "accepted", "done")
+
+#: `read(query)` 支持查询的资源种类
+RESOURCE_TYPES = (
+    "profile",            # 某日档案（含问卷提交 + 树洞）
+    "profile_dates",      # 有记录的日期列表（日历打点）
+    "treehole_entries",   # 某日树洞条目
+    "tips",               # 场景化小贴士
+    "blocks",             # 不可预约时段（教师端设定，学生端只读）
+    "appointments",       # 预约清单（学生端读"我约了哪些格子"）
+)
+
+#: `upload(payload)` 支持写入的数据种类
+DATA_TYPES = (
+    "questionnaire_submission",  # 问卷提交
+    "treehole_entry",            # 树洞条目
+    "appointment",               # 预约
+)
+
+
+# --------------------------------------------------------------------------- 异常
+
+
+class DatabaseError(Exception):
+    """数据库访问尚未接入（待填充）或访问失败时抛出。
+
+    :param message: 人类可读说明（界面文案仍应查文案表，不直接展示本消息）
+    """
+
+    def __init__(self, message: str = "数据库接口待填充") -> None:
+        self.message = message
+        super().__init__(message)
+
+
+# --------------------------------------------------------------------------- 数据结构
+# 对应数据库中学生端需要读写的数据实体。字段名/类型与 db.py 建表语句逐列对齐。
+
+
+@dataclass(frozen=True)
+class StudentProfile:
+    """学生基本信息（登录档案）。"""
+
+    id: str = ""                          # 学号，带 `stu_` 前缀，如 `stu_2023001`
+    name: str = ""                        # 姓名
+    class_name: Optional[str] = None      # 班级，如 `高一(1)班`
+    role: str = "student"                 # 角色，恒为 `student`
+
+
+@dataclass(frozen=True)
+class QuestionnaireSubmission:
+    """一次问卷提交（`submissions` 表）。"""
+
+    record_id: str = ""                   # 幂等键 `rec_` + 随机串
+    student_id: str = ""                  # 学号 `stu_...`
+    ts: str = ""                          # 提交时间 ISO 8601 带时区
+    date: str = ""                        # 日期 `YYYY-MM-DD`
+    mood: str = ""                        # `happy` | `plain` | `down`
+    plain_note: Optional[str] = None      # 平淡分支的原因选填（可空）
+    cause_category: Optional[str] = None  # `study` | `relationship` | `family`
+    detail: Optional[str] = None          # 详细阐述（down 必填）
+    request_help: bool = False            # 是否请求老师帮助
+    consent_share: bool = False           # 是否同意共享给老师（=request_help）
+    consent_ts: Optional[str] = None      # 单独同意留痕时间戳
+
+
+@dataclass(frozen=True)
+class TreeholeEntry:
+    """一条树洞（`treehole_entries` 表；L0 绝对私密，无可见性字段）。"""
+
+    entry_id: str = ""                    # 幂等键 `tre_` + 随机串
+    student_id: str = ""                  # 学号 `stu_...`
+    ts: str = ""                          # 写入时间 ISO 8601
+    date: str = ""                        # 日期 `YYYY-MM-DD`
+    content: str = ""                     # 正文
+    mood_tag: Optional[str] = None        # `none` | `happy` | `plain` | `down`
+
+
+@dataclass(frozen=True)
+class Appointment:
+    """一条预约（`appointments` 表）。"""
+
+    apt_id: str = ""                      # 幂等键 `apt_` + 随机串
+    student_id: str = ""                  # 学号 `stu_...`
+    name: str = ""                        # 姓名（冗余，便于教师端展示）
+    class_name: Optional[str] = None      # 班级（冗余）
+    year: str = ""                        # 年，如 `2026`
+    month: str = ""                       # 月，补零 `01`~`12`
+    day: str = ""                         # 日，补零 `01`~`31`
+    time: str = ""                        # 起始钟点 `HH:MM`
+    period: Optional[str] = None          # 第几节 1~8
+    weekday: Optional[str] = None         # 星期 1~7（1=周一）
+    time_start: Optional[str] = None      # 起始 `HH:MM`
+    time_end: Optional[str] = None        # 结束 `HH:MM`
+    slot: Optional[str] = None            # 格子 ID `YYYY-MM-DD#P`（冗余索引）
+    share_questionnaire: bool = False     # 是否共享测评问卷给老师
+    share_treehole: bool = False          # 是否共享树洞给老师
+    created_ts: str = ""                  # 创建时间 ISO 8601
+
+
+@dataclass(frozen=True)
+class Block:
+    """一个不可预约时段（`blocks` 表；教师端设定，学生端只读）。"""
+
+    blk_id: str = ""                      # 幂等键 `blk_` + 随机串
+    year: str = ""
+    month: str = ""
+    day: str = ""
+    period: str = ""                      # 第几节 1~8
+    weekday: Optional[str] = None
+    slot: Optional[str] = None            # `YYYY-MM-DD#P`
+    active: bool = True                   # 是否处于不可预约状态
+    reason: Optional[str] = None          # 原因
+    operator: Optional[str] = None        # 操作教师工号
+    created_ts: str = ""
+
+
+@dataclass(frozen=True)
+class Tip:
+    """场景化小贴士（`tips` 查询返回）。"""
+
+    scene: str = ""                       # `plain` | `down`
+    text: str = ""
+    treehole_entry: bool = False          # 是否引导去树洞
+
+
+@dataclass(frozen=True)
+class SessionInfo:
+    """登录态（鉴权接口独立返回，不在 upload/read 业务数据内）。"""
+
+    token: str = ""
+    profile: StudentProfile = field(default_factory=StudentProfile)
+    expires_in: int = 43200               # 秒，12h
+
+
+# --------------------------------------------------------------------------- 接口载荷
+
+
+@dataclass(frozen=True)
+class UploadPayload:
+    """`upload()` 的入参结构。
+
+    `type` 取值见 `DATA_TYPES`；`data` 为对应实体的字段字典（键名与上表一致）。
+    """
+
+    type: str = ""                        # `questionnaire_submission` | `treehole_entry` | `appointment`
+    data: Dict[str, Any] = field(default_factory=dict)
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {"type": self.type, "data": dict(self.data)}
+
+
+@dataclass(frozen=True)
+class ReadQuery:
+    """`read()` 的入参结构。
+
+    `resource` 取值见 `RESOURCE_TYPES`；`params` 为该资源需要的过滤参数。
+    """
+
+    resource: str = ""                    # `profile` | `profile_dates` | `treehole_entries` | `tips` | `blocks` | `appointments`
+    params: Dict[str, Any] = field(default_factory=dict)
+
+    def as_dict(self) -> Dict[str, Any]:
+        return {"resource": self.resource, "params": dict(self.params)}
+
+
+# --------------------------------------------------------------------------- 网关
+
+
+class DatabaseGateway:
+    """学生端与数据库之间的**唯一**数据网关（待填充）。
+
+    用法::
+
+        gate = DatabaseGateway()
+        gate.upload({"type": "questionnaire_submission", "data": {...}})
+        gate.read({"resource": "profile", "params": {"date": "2026-10-02"}})
+    """
+
+    def upload(self, payload: Union[UploadPayload, Dict[str, Any]]) -> Dict[str, Any]:
+        """**上传数据库**：把学生端产生的业务数据写入数据库（待填充）。
+
+        :param payload: `UploadPayload` 或等价 dict：`{"type": ..., "data": {...}}`
+        :return: 落库后的结果（如新生成的 `record_id` / `entry_id` / `apt_id` + 服务器时间戳）
+        :raises DatabaseError: 尚未接入实现时抛出；数据库访问失败也应抛此异常
+        """
+        raise DatabaseError(
+            "upload() 待填充：由数据库团队按《学生端数据库接口说明.md》实现"
+        )
+
+    def read(self, query: Union[ReadQuery, Dict[str, Any]]) -> Dict[str, Any]:
+        """**读取数据库**：按查询条件读取学生端需要展示的数据（待填充）。
+
+        :param query: `ReadQuery` 或等价 dict：`{"resource": ..., "params": {...}}`
+        :return: 该资源对应的数据（结构见各资源的响应定义）
+        :raises DatabaseError: 尚未接入实现时抛出；数据库访问失败也应抛此异常
+        """
+        raise DatabaseError(
+            "read() 待填充：由数据库团队按《学生端数据库接口说明.md》实现"
+        )
+
+
+_GATEWAY: Optional[DatabaseGateway] = None
+
+
+def get_gateway() -> DatabaseGateway:
+    """返回进程级单例网关（前端各处共用同一实例）。"""
+    global _GATEWAY
+    if _GATEWAY is None:
+        _GATEWAY = DatabaseGateway()
+    return _GATEWAY

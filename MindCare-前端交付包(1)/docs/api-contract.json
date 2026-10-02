@@ -1,0 +1,272 @@
+{
+  "contract": "mindcare-api",
+  "version": "1.0.0",
+  "status": "M0-review",
+  "base_url": "http://<server-lan-ip>:8080/api/v1",
+  "encoding": "application/json; charset=utf-8",
+  "timezone": "Asia/Shanghai",
+  "auth": {
+    "type": "bearer",
+    "header": "Authorization",
+    "format": "Bearer <token>",
+    "token_ttl_seconds": 43200,
+    "exempt_paths": ["POST /auth/login", "GET /health"]
+  },
+  "envelope": {
+    "success": { "code": 0, "message": "ok", "data": "object" },
+    "failure": { "code": "non-zero int", "message": "human readable, MUST include field name for 2001", "data": null }
+  },
+  "error_codes": {
+    "0": "success",
+    "1001": "unauthorized_or_token_expired",
+    "1002": "forbidden",
+    "2001": "validation_failed",
+    "2002": "not_found",
+    "3001": "internal_error",
+    "4001": "rate_limited"
+  },
+  "id_prefixes": {
+    "student": "stu_",
+    "teacher": "tch_",
+    "submission": "rec_",
+    "treehole": "tre_",
+    "ticket": "tkt_",
+    "alert": "alt_"
+  },
+  "enums": {
+    "mood": ["happy", "plain", "down"],
+    "cause_category": ["study", "relationship", "family"],
+    "role": ["student", "teacher"],
+    "ticket_status": ["pending", "accepted", "done"],
+    "ticket_action": ["accept", "done"],
+    "result_scene": ["happy_end", "plain_tips", "help_sent", "self_care"],
+    "tips_scene": ["plain", "down"],
+    "priority": [1, 2, 3]
+  },
+  "endpoints": [
+    {
+      "name": "login",
+      "method": "POST",
+      "path": "/auth/login",
+      "actors": ["student", "teacher"],
+      "request": {
+        "role": "role (required)",
+        "id": "string (required) 学号或工号",
+        "password": "string|null (teacher required, student null)"
+      },
+      "response_data": {
+        "token": "string (32 chars)",
+        "expires_in": "int seconds",
+        "profile": {
+          "id": "string with prefix",
+          "name": "string",
+          "class_name": "string|null",
+          "role": "role"
+        }
+      }
+    },
+    {
+      "name": "health",
+      "method": "GET",
+      "path": "/health",
+      "actors": ["student", "teacher"],
+      "response_data": {
+        "status": "ok",
+        "version": "semver string",
+        "server_time": "ISO8601",
+        "engine_ready": "bool"
+      }
+    },
+    {
+      "name": "submit_questionnaire",
+      "method": "POST",
+      "path": "/questionnaire/submissions",
+      "actors": ["student"],
+      "idempotency": "client-generated record_id; duplicate submit returns first result without re-writing",
+      "request": {
+        "record_id": "rec_ prefixed string (required, client-generated)",
+        "mood": "mood (required)",
+        "plain_note": "string|null",
+        "cause_category": "cause_category|null",
+        "detail": "string|null (unlimited length)",
+        "request_help": "bool (required)",
+        "consent_share": "bool (required, MUST equal request_help)",
+        "consent_ts": "ISO8601|null (required when consent_share=true)"
+      },
+      "validation_matrix": [
+        { "mood": "happy", "plain_note": "null", "cause_category": "null", "detail": "null", "request_help": false, "consent_share": false },
+        { "mood": "plain", "plain_note": "null", "cause_category": "null", "detail": "null", "request_help": false, "consent_share": false },
+        { "mood": "plain", "plain_note": "non-empty", "cause_category": "required", "detail": "required", "request_help": "required choice", "consent_share": "=request_help" },
+        { "mood": "down", "plain_note": "ignored", "cause_category": "required", "detail": "required", "request_help": "required choice", "consent_share": "=request_help" }
+      ],
+      "side_effects": [
+        "request_help=true -> create ticket(status=pending) linked to record_id",
+        "consent_share=true -> record becomes L2 visible to teachers"
+      ],
+      "response_data": {
+        "record_id": "string",
+        "date": "YYYY-MM-DD",
+        "result_scene": "result_scene",
+        "tips": {
+          "scene": "tips_scene",
+          "text": "string",
+          "treehole_entry": "bool (true -> client may deep-link to treehole tab)"
+        }
+      }
+    },
+    {
+      "name": "get_my_profile_by_date",
+      "method": "GET",
+      "path": "/profile/me",
+      "actors": ["student"],
+      "query": { "date": "YYYY-MM-DD (required)" },
+      "response_data": {
+        "date": "YYYY-MM-DD",
+        "submissions": [
+          { "record_id": "string", "ts": "ISO8601", "mood": "mood", "cause_category": "cause_category|null", "detail": "string|null", "request_help": "bool" }
+        ],
+        "treehole": [
+          { "entry_id": "string", "ts": "ISO8601", "content": "string", "mood_tag": "string|null" }
+        ]
+      }
+    },
+    {
+      "name": "get_my_profile_dates",
+      "method": "GET",
+      "path": "/profile/me/dates",
+      "actors": ["student"],
+      "response_data": { "dates": ["YYYY-MM-DD"] }
+    },
+    {
+      "name": "create_treehole_entry",
+      "method": "POST",
+      "path": "/treehole/entries",
+      "actors": ["student"],
+      "idempotency": "client-generated entry_id",
+      "request": {
+        "entry_id": "tre_ prefixed string (required, client-generated)",
+        "content": "string (required)",
+        "mood_tag": "string|null"
+      },
+      "response_data": { "entry_id": "string", "ts": "ISO8601" },
+      "privacy": "L0 private; NO teacher-facing endpoint exists for this resource"
+    },
+    {
+      "name": "list_my_treehole_entries",
+      "method": "GET",
+      "path": "/treehole/entries",
+      "actors": ["student"],
+      "query": { "date": "YYYY-MM-DD (required)" },
+      "response_data": {
+        "date": "YYYY-MM-DD",
+        "entries": [
+          { "entry_id": "string", "ts": "ISO8601", "content": "string", "mood_tag": "string|null" }
+        ]
+      }
+    },
+    {
+      "name": "get_tips",
+      "method": "GET",
+      "path": "/tips",
+      "actors": ["student"],
+      "query": { "scene": "tips_scene (required)" },
+      "response_data": { "scene": "tips_scene", "text": "string" }
+    },
+    {
+      "name": "get_triage_list",
+      "method": "GET",
+      "path": "/triage/list",
+      "actors": ["teacher"],
+      "query": { "since": "ISO8601 (optional; item-level incremental)" },
+      "response_data": {
+        "generated_at": "ISO8601",
+        "params": { "window_n": "int (default 3)", "threshold_k": "int (default 2)", "p3_lookback_days": "int (default 7)" },
+        "items": [
+          {
+            "student_id": "string",
+            "name": "string",
+            "class_name": "string",
+            "priority": "priority",
+            "flags": {
+              "has_history": "bool",
+              "recent_down_count": "int",
+              "window_size": "int",
+              "pending_help": "bool"
+            },
+            "last_active_ts": "ISO8601|null",
+            "masked": "bool (always true in list)"
+          }
+        ]
+      },
+      "privacy": "MUST NOT include any questionnaire body or treehole content; filtering enforced server-side at query layer"
+    },
+    {
+      "name": "get_student_today",
+      "method": "GET",
+      "path": "/triage/students/{student_id}/today",
+      "actors": ["teacher"],
+      "response_data": {
+        "student_id": "string",
+        "date": "YYYY-MM-DD",
+        "mood_latest": "mood|null",
+        "submission_count_today": "int",
+        "pending_help": "bool",
+        "alert": {
+          "level": "int",
+          "rule": "string e.g. history_plus_recent_down",
+          "recent_down_count": "int",
+          "window_size": "int"
+        },
+        "shared_records": [
+          { "record_id": "string", "ts": "ISO8601", "mood": "mood", "cause_category": "cause_category", "detail": "string" }
+        ],
+        "masked": "bool (true when no consent_share records; shared_records then empty)"
+      },
+      "privacy": "shared_records only includes records with consent_share=true"
+    },
+    {
+      "name": "ack_ticket",
+      "method": "POST",
+      "path": "/triage/tickets/{ticket_id}/ack",
+      "actors": ["teacher"],
+      "request": { "action": "ticket_action (required)", "note": "string|null" },
+      "response_data": { "ticket_id": "string", "status": "ticket_status", "updated_at": "ISO8601" }
+    }
+  ],
+  "triage_rules": {
+    "p1": "has_mental_history == true AND count(mood == 'down' in latest window_n submissions) >= threshold_k",
+    "p2": "exists ticket with status == 'pending' (and not p1)",
+    "p3": "any record within p3_lookback_days (and not p1/p2)",
+    "tie_break": "same priority ordered by last_active_ts DESC",
+    "dedup": "student matching both p1 and p2 appears once with priority=1 and all flags set",
+    "scope_notes": [
+      "window counts submissions, NOT treehole entries (privacy red line)",
+      "window is latest-N-records, NOT latest-N-calendar-days",
+      "students with fewer than window_n records are evaluated on actual count, but threshold_k>=2 requires at least 2 records"
+    ]
+  },
+  "engine_internal_api": {
+    "doc": "see docs/架构设计方案.md section 3.8; frozen at same level as HTTP contract",
+    "methods": [
+      "open(data_dir) -> StorageEngine",
+      "append(collection, owner, payload, record_id=None) -> str",
+      "get(collection, record_id) -> dict|None",
+      "scan_day(collection, owner, date) -> list[dict]",
+      "scan_dates(collection, owner) -> list[str]",
+      "scan_recent(collection, owner, limit) -> list[dict]",
+      "meta_get(table, key) -> dict|None",
+      "meta_put(table, key, value) -> None",
+      "meta_list(table, where=None) -> list[dict]",
+      "ready() -> bool",
+      "close() -> None"
+    ]
+  },
+  "mock_spec": {
+    "students": 12,
+    "students_with_history": 2,
+    "teachers": 1,
+    "history_days": 7,
+    "coverage_required": ["1 student hitting P1", "2 pending tickets", "2 plain-without-note", "3 happy-only", "5 treehole entries"],
+    "seed_command": "python -m mock.seed --data-dir ./data --days 7"
+  }
+}

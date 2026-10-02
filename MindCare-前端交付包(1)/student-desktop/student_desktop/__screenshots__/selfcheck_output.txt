@@ -1,0 +1,243 @@
+MindCare 学生端自检全文（生成时间：2026-10-02 21:34:50+0800）
+本文件由 `selfcheck.py` 自动写入，请勿手工编辑。
+
+[PASS] PySide6 已安装且可导入
+       PySide6 6.11.2（Qt 6.11.2）
+[PASS] QT_QPA_PLATFORM=offscreen（无显示器可构建）
+       QT_QPA_PLATFORM='offscreen'
+[PASS] 已显式加载中文字体（offscreen 下中文才不是空白）
+       加载 ['C:\\Windows\\Fonts\\msyh.ttc', 'C:\\Windows\\Fonts\\msyhbd.ttc', 'C:\\Windows\\Fonts\\Deng.ttf', 'C:\\Windows\\Fonts\\simhei.ttf', 'C:\\Windows\\Fonts\\simsun.ttc', 'C:\\Windows\\Fonts\\seguisym.ttf', 'C:\\Windows\\Fonts\\seguiemj.ttf']；PySide6 不再随包带字体，offscreen 平台无系统字体库，故显式加载 .ttf/.ttc
+[PASS] desktop_common 四个模块存在
+       theme.py / api.py / widgets.py / models.py（包版本 1.1.0）
+[PASS] build_qss() 可调用且返回非空 QSS
+       QSS 长度 9816 字符；objectName 约定 18 个
+[PASS] 正文对比度全部 ≥ 4.5:1
+       INK/BG=10.67、INK/CARD=11.22、INK_SOFT/BG=5.03、INK_SOFT/CARD=5.29、PRIMARY_INK/MIST=5.19、INK/MIST=6.31
+[PASS] 主色雾蓝不做字色（白字压雾蓝不足 4.5:1，故用 PRIMARY_INK）
+       #FFFFFF/MIST=1.81（<4.5，禁用）；PRIMARY_INK/MIST=5.19（采用）
+[PASS] 主色 #A8C5D6 未出现在任何 `color:` 声明里（它当底不当字）
+       QSS 里 `color:` 声明共 24 条 → 命中主色 0 条；主色只出现在 background/border/selection-background 上
+[PASS] 圆角 ≥ 12px、卡片内边距 ≥ 20px
+       RADIUS=20px，CARD_PADDING=26px
+[PASS] 动画时长 ≤ 240ms 且无循环动画属性
+       ANIM_MS=180ms；QSS 内无 animation:/qproperty-
+[PASS] 文案表键齐全（无缺键）
+       可解析 ID 420 条；缺失 无；copywriting.json 加载错误 无
+[PASS] ApiClient 方法表完整（v1.0：学生端 8 + 教师端 4）
+       学生端 8 个 + 教师端 4 个：login_student, health, submit_questionnaire, my_profile, my_dates, create_treehole, my_treehole, tips, triage_list, student_today, ack_ticket, login_teacher
+[PASS] v1.0 已下线的 3 个方法不再存在（事后收回可见性 / 匿名转交通道 ×2）
+       被检查的方法名：revoke_consent / submit_school_feedback / my_school_feedback → 仍存在 无
+[PASS] result_scene 枚举 4 个值与 UI 映射表一致（v1.0）
+       契约 ['happy_end', 'plain_tips', 'help_sent', 'self_care'] ↔ UI ['happy_end', 'help_sent', 'plain_tips', 'self_care']
+[PASS] 契约 v1.0 端点表 = 11 个（本文件常量，供联调段核对）
+       POST /auth/login；GET /health；POST /questionnaire/submissions；GET /profile/me；GET /profile/me/dates；POST /treehole/entries；GET /treehole/entries；GET /tips；GET /triage/list；GET /triage/students/{student_id}/today；POST /triage/tickets/{ticket_id}/ack
+[PASS] code=1002 → 抛 ApiError(1002)
+       ApiError(code=1002, message='该接口仅限 teacher 访问', path='/triage/list')
+[PASS] code=1001 → 抛 ApiError(1001)
+       ApiError(code=1001, field=None)
+[PASS] code=2001 → 抛 ApiError(2001) 且提取到字段名
+       ApiError(code=2001, field='detail')；字段名提取自 message = True
+[PASS] code=2002 → 抛 ApiError(2002)
+       ApiError(code=2002, message='字段 date 校验失败：资源不存在')
+[PASS] code=3001 → 抛 ApiError(3001)
+       ApiError(code=3001, message='服务端内部错误')
+[PASS] code=4001 → 抛 ApiError(4001)
+       ApiError(code=4001, message='提交频率超限')
+[PASS] code=0 → 解包返回 data
+       data={'status': 'ok', 'version': 'stub'}
+[PASS] 非 JSON 响应 → ApiError(3001)
+       ApiError(code=3001, message='响应不是合法 JSON：<html>not json</html>')
+[PASS] 网络超时 → ApiError('timeout')，幂等写接口重试一次
+       ApiError(code='timeout')；耗时 0.83s；命中桩服务 2 次（幂等写接口超时重试一次 = 2 次请求）
+[PASS] 传输层可注入（无需真实网络即可测客户端逻辑）
+       注入的 transport 被调用：['http://127.0.0.1:1/api/v1/health']
+[PASS] offscreen 下构建完整控件树（无异常）
+       主窗口 objectName='StudentMainWindow'，控件总数=598
+[PASS] 关键控件（objectName）全部存在
+       命中 10/10：RootStack=QStackedWidget、LoginView=LoginView、StudentNoInput=QLineEdit、MainTabs=SideNav、QuestionnaireStack=QStackedWidget、TreeholeTab=TreeholeTab、TreeholeList=QListWidget、ProfileTab=ProfileTab、ProfileDayPicker=QComboBox、AboutTab=AboutTab
+[PASS] 主窗口 Tab 数量与标题来自文案表
+       tabs=['问卷', '树洞', '我的档案', '预约', '关于']（问卷 / 树洞 / 我的档案 / 预约 / 关于）
+[PASS] 独立「预约」标签页：确认后 POST /appointments + 成功提示 + 清空选择 + 标记本人已约
+       新增 POST=1 条；成功提示显示=True；文案='预约好了，老师会在这个时间看到你。'；mine 命中=True；body={"apt_id": "apt_00bc840304d1", "year": "2026", "month": "10", "day": "07", "time": "08:50", "share_questionnaire": true, "share_treehole": false}
+[PASS] 关于页含非诊断声明 + 危机热线（UI约定 §6 页脚硬要求）
+       声明命中=True；热线命中=True；关于页文本='· 你填的内容只用于学校里的心理支持，不做别的用途。 | · 内容默认只有你自己能看到。只有你选了「请求心理老师帮助」，老师才会看到这次的内容。 | · 树洞里的内容永远是私密的，老师看不到，也不会进入任何统计。 | 这里的内容是关怀用的参考，不构成医学诊断。如果一直觉得不太好，可以让家人或老师陪你'
+[PASS] 告知页含非诊断声明 + 危机热线（学生第一次看到的就是这一页）
+       声明命中=True；热线命中=True
+[PASS] 关于页/告知页不得出现加载态文案（曾把 c.loading.generic 误渲染成关于页正文）
+       关于页含「稍等一下…」=False；告知页含=False
+[PASS] 平淡+填了原因：进 Q3 收集 detail，且**不**自动提交（曾直接提交 → 400「参数校验失败: detail」）
+       路径 plain_note→q2→'q3'（应到 'q3'）；自动提交次数=0（应为 0）
+[PASS] 平淡+填了原因 的请求体满足矩阵第 3 行（plain_note / cause_category / detail 均非空）
+       body={"record_id": "rec_probe_plainnote", "mood": "plain", "plain_note": "有点烦，说不上来", "cause_category": "study", "detail": "这周月考没考好，怕爸妈失望", "request_help": false, "consent_share": false, "consent_ts": null}
+[PASS] 问卷状态机的每个页面都真的进了 QStackedWidget
+       栈内 13 页：['notice', 'q1', 'plain_note', 'q2', 'explore', 'q3', 'help', 'appointment', 'result_happy_end', 'result_plain_tips', 'result_help_sent', 'result_self_care', 'result_unmapped']
+[PASS] v1.0 问卷不再有 Q2.5 那一页与它的追问页
+       页面清单里 q25/q25_detail 命中：无
+[PASS] 预约页是课表：1~12 月导航栏 + 8×7 共 56 个可点方块
+       月份按钮=12；方块数=56（8 节 × 7 天）
+[PASS] 课表横轴是星期几、纵轴是第 1~8 节（行头含真实时间段）
+       列头周一='周一 9/28'；第1节='第1节  08:00-08:45'；第8节='第8节  16:05-16:50'
+[PASS] 点方块 → 载荷含 年/月/日/第几节/星期几/起止钟点 + 两个分享布尔
+       {"day": "06", "month": "10", "period": "3", "share_questionnaire": false, "share_treehole": false, "time": "09:55", "time_end": "10:40", "time_start": "09:55", "weekday": "2", "year": "2026"}
+[PASS] 预约页带出预约人基本信息（姓名 / 班级 / 学号**取自登录档案**）
+       姓名='林小满'；班级='高一(2)班'；学号='stu_2023001'
+[PASS] 预约页选择性分享控件可被勾选
+       测评分享=False；树洞分享=False
+[PASS] 『请求心理老师帮助』→ 先跳去选预约时间（不直接提交）
+       当前页='appointment'（应为 'appointment'）
+[PASS] 「预约确认」→ 组装 POST /appointments 请求体（幂等 apt_ + 字段齐全 + 复用）
+       {"apt_id": "apt_433eb2cf484e", "day": "3", "month": "10", "share_questionnaire": true, "share_treehole": false, "time": "15:00", "year": "2026"}；二次组包 apt_id 复用=True
+[PASS] result_scene 四个值都有对应页面（穷举）
+       {"happy_end": "ResultPage", "plain_tips": "ResultPage", "help_sent": "ResultPage", "self_care": "ResultPage"}
+[PASS] show_result() 能切到 4 个结果页
+       {"happy_end": "result_happy_end", "plain_tips": "result_plain_tips", "help_sent": "result_help_sent", "self_care": "result_self_care"}
+[PASS] 未登记的 result_scene → 可见兜底页（不静默失败）
+       current='result_unmapped'；该页确实注册在页面字典里=True；页面清单=['appointment', 'explore', 'help', 'notice', 'plain_note', 'q1', 'q2', 'q3', 'result_happy_end', 'result_help_sent', 'result_plain_tips', 'result_self_care', 'result_unmapped']
+[PASS] v1.1 才有的第 5 个场景值在 v1.0 落可见兜底页（防御性，不静默）
+       喂进去的场景值='consent_revoked'；current='result_unmapped'；RESULT_PAGES keys=['happy_end', 'help_sent', 'plain_tips', 'self_care']
+[PASS] 树洞控件树零『分享/公开/让老师看/可见性』文案
+       检索 47 个控件的 text/placeholder/tooltip/title，禁用词 ['分享', '公开', '让老师看', '可见性', '谁能看到', '授权'] → 命中 0
+[PASS] 树洞 visibility 恒为 private（无分享开关）
+       desktop VISIBILITY='private'，TreeholeTab.visibility='private'；树洞请求体字段 = entry_id/content/mood_tag
+[PASS] 档案每行都以 request_help 显示求助状态（文案来自文案表）
+       行数=2；状态标签=['已选择：老师可以看到你这次写的内容。', '已选择：内容只留在你这里。']；期望=['已选择：老师可以看到你这次写的内容。', '已选择：内容只留在你这里。']（最新在前 → true 在上）
+[PASS] 状态标签只用文案表已有键，没有自造『已分享/未分享』字样
+       标签文本=['已选择：老师可以看到你这次写的内容。', '已选择：内容只留在你这里。']；来源键 = ['s.help.selected.no', 's.help.selected.request']
+[PASS] request_help=true 的行能被单独识别（契约强制 consent_share == request_help）
+       request_help=true 的 record_id=['rec_demo_help']
+[PASS] 档案页零已下线能力入口（无记录级按钮、无下线能力文案）
+       禁用词 43 条（推导自文案表键 ['s.revoke.', 's.end.revoked.', 's.q25.title', 's.q25.subtitle', 's.q25.disclosure.', 's.q25.followup.', 's.q25.sensitive.', 's.notice.item4', 's.notice.item5', 's.notice.item6']）；扫描 38 个控件 → 命中 0；档案页按钮 1 个（仅允许『再试一次』），记录级按钮=0
+[PASS] 所有可点控件 StrongFocus（键盘可达）
+       按钮 200 个，非 StrongFocus 0 个
+[PASS] QSS 有可见 focus 样式
+       QSS 含 'QPushButton:focus { border: 2px solid #7FA6BA; }'
+[PASS] 截图成功且 ≥ 5 张
+       01_login.png 52713 bytes；02_questionnaire_notice.png 74049 bytes；03_q1_mood.png 45025 bytes；03b_explore.png 49966 bytes；04_q3_detail.png 45837 bytes；05_help_choice.png 67920 bytes；05b_appointment_grid.png 66386 bytes；06_result_self_care.png 80237 bytes；07_treehole.png 85792 bytes；08_profile.png 59610 bytes；09_engine_not_ready.png 50106 bytes；10_about.png 69825 bytes
+[PASS] 截图为真实渲染（不同颜色数远超纯色底）
+       不同颜色数（隔点采样）：01_login.png=196、02_questionnaire_notice.png=231、03_q1_mood.png=177、03b_explore.png=178、04_q3_detail.png=184、05_help_choice.png=242、05b_appointment_grid.png=257、06_result_self_care.png=287、07_treehole.png=385、08_profile.png=259、09_engine_not_ready.png=202、10_about.png=266
+[PASS] 关键页面无硬编码中文界面文案（文案均来自 COPY）
+       AST 扫描 9 个文件，命中『会进入界面』的中文字面量 0 个 → 非文案来源的可疑项 0 个
+[PASS] 启动即调用 GET /health（应用里第一次真正用它）
+       health_checked=True；payload={"status": "ok", "version": "1.0.0-stub", "server_time": "2026-10-02T21:34:37+08:00", "engine_ready": true}；本窗口实际请求记录=['GET /health']
+[PASS] engine_ready=true → 无提示、提交按钮可用
+       engine_ready=True；提示条可见=False；提交按钮 enabled=[True, True, True]
+[PASS] engine_ready=false → 非阻塞提示可见（文案来自文案表键 c.engine.notReady）
+       提示文字='数据库正在恢复，稍等一下再试就好。'；文案表[c.engine.notReady]='数据库正在恢复，稍等一下再试就好。'；提示条类=QLabel（QLabel，不是模态对话框，不阻塞填写）
+[PASS] engine_ready=false → 问卷全部提交按钮被禁用
+       提交按钮 3 个（平淡分支 / Q3 / 求助选择）→ enabled=[False, False, False]
+[PASS] 禁用时不再发出提交请求（防'填完整份问卷才失败'）
+       高兴分支（自动提交路径）点击后：POST 记录=无；当前页='q1'；提交按钮(求助页)可点=False
+[PASS] engine_ready 恢复 true → 提示消失、按钮恢复可用
+       engine_ready=True；提示条可见=False；提示文字=''；按钮 enabled=[True, True, True]
+[PASS] 主窗口提交前再判一次 engine_ready（挡住程序化调用/自动提交分支）
+       POST /questionnaire/submissions 次数 0 → 0；页面文案='现在还不能提交，等一会儿再试一次。'（文案表[c.engine.notReady.action]）
+[PASS] 登录态默认路径 = %LOCALAPPDATA%\MindCare\session.json（路径不写死、不落工程目录）
+       session_dir() 默认=C:\Users\admin\AppData\Local\MindCare；session_file() 默认=C:\Users\admin\AppData\Local\MindCare\session.json；LOCALAPPDATA='C:\\Users\\admin\\AppData\\Local'；是否位于工程目录(C:\Users\admin\Desktop\文件\MindCare-前端交付包(1))下=False；本次自检实际使用（MINDCAKE_SESSION_DIR 覆盖）=C:\Users\admin\AppData\Local\Temp\mindcare-selfcheck-session\session.json
+[PASS] 登录成功后 session 文件确实写入（含 token / profile / saved_at）
+       路径=C:\Users\admin\AppData\Local\Temp\mindcare-selfcheck-session\session.json（268 bytes）；token=persiste…（打码，原文 30 字符）；profile.id='2023001'；saved_at=1790948078.718531；expires_in=43200；expires_at-saved_at=43200s（契约 43200s=12h）
+[PASS] 号次 2023001 原样发出（v1.1 注册制：不补前缀）且带密码
+       POST /auth/login body=[{"role": "student", "id": "2023001", "password": "1234"}]；normalize_student_no('2023001')='2023001'
+[PASS] 模拟重启：新 ApiClient + 新窗口 → 直接进主窗（不再弹登录页）
+       session_restored=True；当前页=主窗(MainTabs)；恢复的 token=persiste…（与文件中的一致=True）；profile={"id": "2023001", "name": "自检", "class_name": "高二(3)班", "role": "student"}
+[PASS] 过期 session（>12h）→ 返回 None、文件被清除、**不抛异常**
+       age=43260s（> expires_in=43200）；load_session()=None；文件仍存在=False；抛出异常=无
+[PASS] 损坏 session（半截 JSON）→ 返回 None、文件被清除、不抛异常
+       文件内容='{"token": "half-writ'；load_session()=None；文件仍存在=False；抛出异常=无
+[PASS] session_path=False（关闭持久化）→ 登录/写盘都不抛异常、不落文件
+       session_path=None；token=persiste…；save_session()=False；抛出异常=无；session 文件仍存在=False
+[PASS] 登出入口（关于页）→ 清内存 token + 删 session 文件 + 回登录页
+       登出前 token=True；登出后 client.token=None；session 文件仍存在=False；当前页=登录页
+[PASS] [1001] 恢复出的 token 被服务端拒 → 清除内存 token + 清 session 文件
+       请求过的路径=['/profile/me']；client.token=None；session 文件仍存在=False；session_restored=False
+[PASS] [1001] 切回登录页并显示可读提示（等于文案表 c.error.1001）
+       went_login=True；当前页=登录页；提示可见=True；提示='登录状态过期了，重新登录一下就好。'；可读(非占位符)=True；等于文案表=True；文案表[c.error.1001]='登录状态过期了，重新登录一下就好。'；档案页残留文案已清=True（进主窗前在=False）
+[PASS] [1001] 问卷提交失败走同一条路径（_on_submit_failed → handle_failure）
+       预置 session 恢复成功=True；构造 ApiError(1001) 喂给 _on_submit_failed → 当前页=登录页；session 文件仍存在=False；client.token=None
+[PASS] [2001] 不跳登录：留在主窗、session 文件与 token 都保留
+       当前页=主窗；session 文件仍存在=True；client.token=keep-tok…；档案页错误='有一项还没有填写完整，检查一下再提交就好。'（期望文案表[c.error.2001]='有一项还没有填写完整，检查一下再提交就好。'）
+[PASS] [2001] 错误只显示在当前页（不误报成登录过期）
+       档案页（当前 Tab）=显示（'有一项还没有填写完整，检查一下再提交就好。'）；登录页提示=''（可见=False，文案表[c.error.1001]='登录状态过期了，重新登录一下就好。'）
+[PASS] [2002] 不跳登录（只有 1001 才跳）
+       handle_failure(ApiError(2002)) → False；当前页=主窗；session 文件仍存在=True
+[PASS] [3001] 不跳登录（只有 1001 才跳）
+       handle_failure(ApiError(3001)) → False；当前页=主窗；session 文件仍存在=True
+[PASS] [network] 不跳登录（只有 1001 才跳）
+       handle_failure(ApiError('network')) → False；当前页=主窗；session 文件仍存在=True
+[PASS] normalize_student_no() 四条用例全部符合预期（仅去空白，不补前缀）
+       '2023001' → '2023001'；'stu_2023001' → 'stu_2023001'；'abc' → 'abc'；'' → ''
+[PASS] 登录框实测：2023001 → 原样发出 id=2023001 且 password=1234
+       输入 '2023001' → body.id='2023001'，body.password='1234'
+[PASS] 登录框实测：stu_2023001 → 原样发出（无二次补前缀）
+       输入 'stu_2023001' → body.id='stu_2023001'
+[PASS] 登录框实测：abc → 原样发出 abc
+       输入 'abc' → body.id='abc'
+[PASS] 登录页占位符/说明体现号次形态（来自文案表，无硬编码中文）
+       占位符='号次'（键 c.login.studentNo）；提示行='号次是你的编号，注册后用它登录。'（键 c.login.studentNo.format）；tooltip='号次是你的编号，注册后用它登录。'；注册提示='首次使用请先注册，填写班级、姓名、号次与密码。'（键 c.login.demoNote）
+[PASS] format_ts_human('2026-10-02T21:40:00+08:00') 不含 'T' 与 '+08:00'，含'月'与时间
+       '2026-10-02T21:40:00+08:00' → '10月2日 21:40'
+[PASS] 同一时刻的不同写法 → 同一（Asia/Shanghai）结果，不受本机时区影响
+       +08:00 写法='10月2日 21:40'；+00:00 写法='10月2日 21:40'；Z 写法='10月2日 21:40'
+[PASS] 刚刚记录的时间戳（今天）也用同一套『M月D日 HH:MM』写法
+       now_iso()='2026-10-02T21:34:47+08:00' → '10月2日 21:34'（对比 2026-10-02T21:40:00+08:00 → '10月2日 21:40'）
+[PASS] 今天与往日用**同一套**写法（M月D日 HH:MM），同一列表内可直接扫读
+       今天样例（2026-10-02）='10月2日 21:40'；往日样例（2026-09-15T21:40:00+08:00）='9月15日 21:40'；长度一致=True（两次都是两位数日号）
+[PASS] 异常输入（None / '' / 'not-a-ts' / 非法日期 / 非字符串）不抛异常
+       输入 [None, '', 'not-a-ts', '2026-13-99T00:00:00+08:00', 20261002, {}] → 输出 ["''", "''", "'not-a-ts'", "'2026-13-99T00:00:00+08:00'", "'10月2日 00:00'", "'{}'"]；抛出异常=无
+[PASS] 树洞列表渲染文本不再出现 '+08:00'（改为人类可读）
+       渲染文本='10月2日 21:40\n自检：树洞时间显示'；含易读格式='10月2日 21:40' → True
+[PASS] 档案记录行渲染文本不再出现 '+08:00'（改为人类可读）
+       该行标签=['沮丧', '分类：学业', '10月2日 21:40', '已选择：内容只留在你这里。', '自检：档案时间显示']；含易读格式='10月2日 21:40'
+[PASS] 已正式收录的文案键都仍在文案表里（回归守门，防被误删）
+       已收录 10 条；缺失=无；待收录=['c.toast.logout']
+[PASS] 界面用到的键都真实存在（不会渲染成『⟪缺文案:…⟫』）
+       'c.engine.notReady'='数据库正在恢复，稍等一下再试就好。'；'c.engine.notReady.action'='现在还不能提交，等一会儿再试一次。'；c.login.studentNo.format='号次是你的编号，注册后用它登录。'
+[PASS] build_appointment_record 组装出契约字段（v1.0 的 11 个一个不少）
+       {"apt_id": "apt_a0fd3c2b2b29", "class_name": "初二(3)班", "created_ts": "2026-10-02T21:34:49+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}
+[PASS] v1.1 追加课表定位：period / weekday / time_start / time_end / slot
+       period=7 weekday=6 15:11-16:00 slot=2026-10-03#7
+[PASS] append → list 一条预约可读回，字段与 ID 前缀一致
+       [{"apt_id": "apt_a0fd3c2b2b29", "class_name": "初二(3)班", "created_ts": "2026-10-02T21:34:49+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}]
+[PASS] 坏行跳过 + 空记录不写（坏数据不崩、宁可缺）
+       [{"apt_id": "apt_a0fd3c2b2b29", "class_name": "初二(3)班", "created_ts": "2026-10-02T21:34:49+08:00", "day": "3", "month": "10", "name": "小明", "period": "7", "share_questionnaire": true, "share_treehole": false, "slot": "2026-10-03#7", "student_id": "stu_2023001", "time": "15:11", "time_end": "16:00", "time_start": "15:11", "weekday": "6", "year": "2026"}, {"apt_id": "apt_32c273f67888", "class_name": null, "created_ts": "2026-10-02T21:34:50+08:00", "day": "4", "month": "10", "name": "", "period": "2", "share_questionnaire": false, "share_treehole": true, "slot": "2026-10-04#2", "student_id": "stu_2023002", "time": "09:00", "time_end": "09:35", "time_start": "08:50", "weekday": "7", "year": "2026"}]
+[PASS] mock server 可达
+       GET /health → {"status": "ok", "version": "1.1.0", "server_time": "2026-10-02T21:34:50+08:00", "engine_ready": true}
+[PASS] 健康检查返回的版本号是 v1.1 服务端
+       version='1.1.0'
+[PASS] ① 注册+登录：UI 点击 → QThreadPool → POST /auth/login
+       token=cde5d183…；profile={"id": "stu_2023001", "name": "林小满", "class_name": "高一(2)班", "role": "student"}
+[PASS] 逐题跳转纯本地（走到 Q3 仍未产生任何提交请求）
+       路径 notice→q1→explore→'q3'；submit_requested 触发次数=0
+[PASS] 只在最后一屏触发一次提交请求
+       submit_requested 触发次数=1；body={"cause_category": "study", "consent_share": false, "consent_ts": null, "detail": "最近三次月考排名连续下滑，晚自习完全无法集中，看到卷子就心慌。", "mood": "down", "plain_note": null, "record_id": "", "request_help": false}
+[PASS] 提交 payload 只有 v1.0 的 8 个字段（无 v1.1 的 material 字段）
+       实际字段=['cause_category', 'consent_share', 'consent_ts', 'detail', 'mood', 'plain_note', 'record_id', 'request_help']；契约 v1.0 白名单=['cause_category', 'consent_share', 'consent_ts', 'detail', 'mood', 'plain_note', 'record_id', 'request_help']
+[PASS] ② 提交问卷：一次性 POST /questionnaire/submissions → 结果页
+       result_scene='self_care'（down + request_help=false → self_care）；当前页='result_self_care'；record_id='rec_4e85e8606b8f'
+[PASS] ③ 拉档案：GET /profile/me → 档案页渲染本次记录
+       date=2026-10-02；行数=1；本次提交='rec_4e85e8606b8f'；状态标签=['已选择：内容只留在你这里。']
+[PASS] 档案里每条的状态标签都与它的 request_help 一致
+       逐条核对 1 行：rec_4e85e8606b…=只留给自己
+[PASS] GET /profile/me 响应里该条 request_help=false（本次选了"不用帮助"）
+       该条响应={"record_id": "rec_4e85e8606b8f", "ts": "2026-10-02T21:34:50+08:00", "mood": "down", "cause_category": "study", "detail": "最近三次月考排名连续下滑，晚自习完全无法集中，看到卷子就心慌。", "request_help": false}
+[PASS] GET /profile/me 响应结构 = v1.0 的 6 个字段（不含 consent_share）
+       实际字段=['cause_category', 'detail', 'mood', 'record_id', 'request_help', 'ts']；v1.0 应为 record_id/ts/mood/cause_category/detail/request_help
+[PASS] [期望 1001] 坏 token 访问学生接口 → 1001（未登录/过期）
+       实际 ApiError(code=1001, field=None, message='未登录或 token 过期')
+[PASS] [期望 1002] 学生访问教师接口 → 1002（角色越界）
+       实际 ApiError(code=1002, field=None, message='无权限')
+[PASS] [期望 2001] 缺 detail 提交 → 2001（message 带字段名）
+       实际 ApiError(code=2001, field='detail', message='字段 detail 校验失败：必须是非空字符串')
+[PASS] [期望 2001] happy 但 request_help=true → 2001（矩阵第 1 行）
+       实际 ApiError(code=2001, field='mood', message='mood=happy 时不得携带原因/详情/求助')
+[PASS] [期望 2002] 未注册的号次 → 2002（学生不存在）
+       实际 ApiError(code=2002, field=None, message='学生不存在')
+[PASS] [期望 2001] 非法日期拉档案 → 2001（服务端把 date 校验失败归到 2001；见下方说明）
+       实际 ApiError(code=2001, field='date', message='字段 date 校验失败：日期不存在')
+[PASS] 同 token 1 分钟 >10 次提交 → 4001（契约 §2.3 限流）
+       12 次提交的错误码序列=[None, None, None, None, None, None, None, None, None, 4001, 4001, 4001]（None = 成功；4001 出现在第 10 次）
+[PASS] 主线程从未调用 ApiClient 传输层（UI约定 §3/§7）
+       STATS={"transport_calls_main_thread": 0, "transport_calls_worker_thread": 26, "worker_runs": 28, "worker_thread_names": ["Dummy-100", "Dummy-101", "Dummy-102", "Dummy-103", "Dummy-104", "Dummy-105", "Dummy-106", "Dummy-107", "Dummy-108", "Dummy-109", "Dummy-110", "Dummy-83", "Dummy-84", "Dummy-85", "Dummy-86", "Dummy-87", "Dummy-88", "Dummy-89", "Dummy-90", "Dummy-91", "Dummy-92", "Dummy-93", "Dummy-94", "Dummy-95", "Dummy-96", "Dummy-97", "Dummy-98", "Dummy-99"]}；worker 线程名=['Dummy-100', 'Dummy-101', 'Dummy-102', 'Dummy-103', 'Dummy-104', 'Dummy-105', 'Dummy-106', 'Dummy-107', 'Dummy-108', 'Dummy-109', 'Dummy-110', 'Dummy-83', 'Dummy-84', 'Dummy-85', 'Dummy-86', 'Dummy-87', 'Dummy-88', 'Dummy-89', 'Dummy-90', 'Dummy-91', 'Dummy-92', 'Dummy-93', 'Dummy-94', 'Dummy-95', 'Dummy-96', 'Dummy-97', 'Dummy-98', 'Dummy-99']
+[PASS] 所有网络请求都真的在 QThreadPool 线程里执行
+       worker 执行 28 次，worker 线程上传输层调用 26 次
+
+共 119 项：通过 119，未通过 0
