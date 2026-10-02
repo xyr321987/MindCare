@@ -803,7 +803,10 @@ class AppointmentPage(_FlowPage):
         # HTTP 模式（联调后端共享库）：由 `RemoteSchedule` 轮询 `GET /appointments/blocks`；
         # 本地模式（未提供 client/runner，演示/离线）：沿用文件签名 `StoreWatcher`。
         if client is not None and runner is not None:
-            self._remote = RemoteSchedule(client, runner, fetch_appointments=False)
+            # 学生读不到他人预约（`GET /appointments` 对学生 1002），但能读**自己的**预约
+            # （`GET /appointments/mine`）——教师代订后这一格也要同步刷成「已预约」。
+            self._remote = RemoteSchedule(client, runner,
+                                         fetch_appointments=False, fetch_mine=True)
             self._sync = self._remote
         else:
             self._sync = sync_mod.StoreWatcher(

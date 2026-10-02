@@ -109,6 +109,7 @@ from desktop_common.models import RESULT_SCENES               # noqa: E402
 from desktop_common.widgets import OBJECT_NAMES               # noqa: E402
 from desktop_common import session as session_mod             # noqa: E402
 from desktop_common import appointments as appt_mod           # noqa: E402
+from desktop_common.remote_sync import RemoteSchedule          # noqa: E402
 from student_desktop.app.main import (                        # noqa: E402
     ENGINE_NOT_READY_KEY, StudentMainWindow, normalize_student_no,
 )
@@ -2228,6 +2229,40 @@ def check_profile_refresh_after_submit(app: QtWidgets.QApplication) -> None:
     window.close()
 
 
+def check_appointment_mine_sync(app: QtWidgets.QApplication) -> None:
+    """教师代订 → 学生端课表同步（问题 4）。
+
+    学生端课表用 `RemoteSchedule(fetch_mine=True)` 轮询 `GET /appointments/mine`，
+    把「本人已预约」的格子（含教师代订）刷成绿框。这里用注入式 stub 直接驱动
+    `_fetch` + `_apply`，断言 mine 快照里出现了教师代订的 slot。
+    """
+    section("④l 教师代订 → 学生端课表同步（RemoteSchedule.fetch_mine）")
+
+    class _StubClient:
+        def list_blocks(self) -> dict:
+            return {"slots": []}
+
+        def list_appointments(self, date=None) -> dict:
+            return {"items": []}
+
+        def list_my_appointments(self) -> dict:
+            return {"items": [
+                {"apt_id": "apt_teacher", "slot": "2026-10-06#1",
+                 "status": "scheduled"},
+            ]}
+
+    remote = RemoteSchedule(_StubClient(), None,
+                            fetch_appointments=False, fetch_mine=True)
+    blocks, appointments, mine = remote._fetch(
+        remote._client, remote._fetch_appointments, remote._fetch_mine)
+    remote._apply(blocks, appointments, mine)
+    REPORT.check("学生端从 /appointments/mine 同步出教师代订的格子",
+                 "2026-10-06#1" in remote.mine_slots(),
+                 f"mine_slots()={sorted(remote.mine_slots())}；"
+                 f"fetch_mine={remote._fetch_mine}；"
+                 f"教师代订 slot=2026-10-06#1")
+
+
 def check_suggested_copy_keys() -> None:
     """文案表键的**收录状态与回归守门**。
 
@@ -2424,6 +2459,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         check_student_no_prefix(app)     # 要求 5
         check_ts_human(app)              # 要求 4
         check_profile_refresh_after_submit(app)   # 问题3：提交后档案自动刷新
+        check_appointment_mine_sync(app)          # 问题4：教师代订 → 学生端同步
         check_suggested_copy_keys()
         check_appointments_storage()
 

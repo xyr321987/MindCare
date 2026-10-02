@@ -475,6 +475,21 @@ def _coerce_period(year, month, day, time_text, period_hint) -> int:
     return period
 
 
+def my_appointments(db: Database, student_id: str) -> dict:
+    """GET /appointments/mine（学生）：读自己的预约。
+
+    教师代订（`/db/write appointments.schedule`）也是写进同一张 `appointments`，
+    这里把该生的 `scheduled` 预约连同 `slot` 一并返回，学生端课表据此把「老师
+    帮我约的那一格」刷成已预约（问题 4：教师代订 → 学生端同步可见）。
+    """
+    rows = db.query(
+        "SELECT apt_id, slot, status, year, month, day, period, time_start, time_end, created_ts"
+        " FROM appointments WHERE student_id=? AND status='scheduled' ORDER BY created_ts DESC",
+        (student_id,),
+    )
+    return {"items": [dict(r) for r in rows]}
+
+
 def list_blocks(db: Database) -> dict:
     rows = db.query("SELECT * FROM blocks WHERE active=1")
     return {"slots": [r["slot"] for r in rows]}

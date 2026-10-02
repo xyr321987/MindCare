@@ -41,6 +41,7 @@ ROUTES = [
     ("GET",    "/appointments",                  "teacher",  "list_appointments"),
     ("GET",    "/appointments/blocks",           "any",      "list_blocks"),
     ("POST",   "/appointments/blocks",           "teacher",  "set_block"),
+    ("GET",    "/appointments/mine",             "student",  "my_appointments"),
     ("POST",   "/db/read",                       "teacher",  "db_read"),
     ("POST",   "/db/write",                      "teacher",  "db_write"),
 ]
@@ -134,6 +135,8 @@ class App:
             return {"date": date or today, "items": items}
         if handler == "list_blocks":
             return engine.list_blocks(db)
+        if handler == "my_appointments":
+            return engine.my_appointments(db, subject)
         if handler == "set_block":
             return engine.set_block(db, subject, body)
         if handler == "db_read":

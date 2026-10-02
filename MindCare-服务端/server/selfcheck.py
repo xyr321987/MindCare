@@ -106,6 +106,18 @@ def main() -> int:
                 "time": "15:00", "share_questionnaire": False, "share_treehole": False},
                stu_token, 2001, "同 slot 二次预约被拒")
 
+    # 11.5 学生读自己的预约（教师代订 → 学生端同步可见，问题 4）
+    sch_mine = call("POST", "/db/write", token=tea_token, body={"action": "appointments.schedule",
+                    "payload": {"student_id": "stu_2023001", "year": "2026", "month": "10",
+                                "day": "6", "time": "08:00", "note": "代订"}})
+    ok(sch_mine.get("status") == "scheduled", "教师代订成功（供 mine 端点读取）")
+    mine = call("GET", "/appointments/mine", token=stu_token)
+    mine_ids = {i.get("apt_id") for i in (mine.get("items") or [])}
+    ok("apt_self1" in mine_ids and sch_mine.get("appointment_id") in mine_ids,
+       "GET /appointments/mine 同时含学生自约 + 教师代订")
+    expect_err("GET", "/appointments/mine", None, tea_token, 1002,
+               "教师访问 /appointments/mine 被拒（仅学生）")
+
     # 12 可见性：教师看今天数据（共享问卷可见、树洞不可见）
     today = call("GET", "/triage/students/stu_2023001/today", token=tea_token)
     ok(today["has_shared_records"] is True, "教师端 has_shared_records=true")

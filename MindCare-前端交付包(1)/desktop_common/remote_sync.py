@@ -55,12 +55,14 @@ class RemoteSchedule(QObject):
     changed = Signal()
 
     def __init__(self, client, runner, *, fetch_appointments: bool = True,
+                 fetch_mine: bool = False,
                  interval_ms: int = DEFAULT_INTERVAL_MS,
                  parent: Optional[QObject] = None) -> None:
         super().__init__(parent)
         self._client = client
         self._runner = runner
         self._fetch_appointments = bool(fetch_appointments)
+        self._fetch_mine = bool(fetch_mine)
 
         #: 当前不可预约格子集合（`{"YYYY-MM-DD#P", ...}`）
         self._blocked: Set[str] = set()
@@ -104,7 +106,7 @@ class RemoteSchedule(QObject):
             return
         self._in_flight = True
         worker = self._runner.submit(
-            self._fetch, self._client, self._fetch_appointments,
+            self._fetch, self._client, self._fetch_appointments, self._fetch_mine,
             done=self._on_fetched, failed=self._on_failed)
 
     def force_refresh(self) -> None:
@@ -112,22 +114,23 @@ class RemoteSchedule(QObject):
         self.poll()
 
     @staticmethod
-    def _fetch(client, fetch_appointments: bool):
-        """在 worker 线程里跑：拉 blocks（教师再拉全部预约）。"""
+    def _fetch(client, fetch_appointments: bool, fetch_mine: bool):
+        """在 worker 线程里跑：拉 blocks（教师再拉全部预约；学生拉自己的预约）。"""
         blocks = client.list_blocks()
         appointments = client.list_appointments(None) if fetch_appointments else None
-        return blocks, appointments
+        mine = client.list_my_appointments() if fetch_mine else None
+        return blocks, appointments, mine
 
     def _on_fetched(self, result) -> None:
         self._in_flight = False
-        blocks, appointments = result
-        self._apply(blocks, appointments)
+        blocks, appointments, mine = result
+        self._apply(blocks, appointments, mine)
 
     def _on_failed(self, error) -> None:
         # 网络失败 / 未登录：幂等地保留旧快照，不弹错 —— 等下一轮重试即可。
         self._in_flight = False
 
-    def _apply(self, blocks: dict, appointments: Optional[dict]) -> None:
+    def _apply(self, blocks: dict, appointments: Optional[dict], mine: Optional[dict]) -> None:
         slots = set(str(s) for s in (blocks or {}).get("slots") or [])
         changed = slots != self._blocked
         self._blocked = slots
@@ -144,6 +147,18 @@ class RemoteSchedule(QObject):
         if by_slot != self._appointments:
             changed = True
         self._appointments = by_slot
+
+        # 本人预约（学生端）：从 `/appointments/mine` 推导，教师代订也会同步进来
+        mine_slots: Set[str] = set()
+        for item in (mine or {}).get("items") or []:
+            if not isinstance(item, dict):
+                continue
+            slot = _slot_of(item)
+            if slot:
+                mine_slots.add(slot)
+        if mine_slots != self._mine:
+            changed = True
+        self._mine = mine_slots
 
         if changed:
             self.change_count += 1

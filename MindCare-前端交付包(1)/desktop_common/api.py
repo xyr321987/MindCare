@@ -544,6 +544,14 @@ class ApiClient:
         """`GET /appointments/blocks`（学生/教师共读课时可预约状态）。"""
         return self.request("GET", "/appointments/blocks") or {}
 
+    def list_my_appointments(self) -> dict:
+        """`GET /appointments/mine`（学生：读自己的预约）。
+
+        教师代订（`/db/write appointments.schedule`）后，学生端课表靠它把「老师
+        帮我约的那一格」刷成已预约（问题 4：教师代订 → 学生端同步可见）。
+        """
+        return self.request("GET", "/appointments/mine") or {}
+
     def set_block(self, year: Any, month: Any, day: Any, period: Any, active: bool,
                   reason: Optional[str] = None) -> dict:
         """`POST /appointments/blocks`（教师；设定/取消某格的不可预约状态）。"""
