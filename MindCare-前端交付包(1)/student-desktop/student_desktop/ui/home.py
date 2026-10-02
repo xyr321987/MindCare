@@ -263,8 +263,16 @@ class HomePage(QWidget):
         self.note_text = make_label("", "HomeNoteText")
         self.note_text.setWordWrap(True)
         note_inner.addWidget(self.note_text)
+        # 底部：署名（左）+ 植物小插画（右下角，呼应「手写便签」）
+        note_bottom = QHBoxLayout()
         self.note_sign = make_label(COPY["home.note.sign"], "HomeNoteSign")
-        note_inner.addWidget(self.note_sign)
+        note_bottom.addWidget(self.note_sign)
+        note_bottom.addStretch(1)
+        plant = QLabel(self.note_card)
+        plant.setPixmap(svg_pixmap("note_plant.svg", 56, 48))
+        plant.setFixedSize(56, 48)
+        note_bottom.addWidget(plant)
+        note_inner.addLayout(note_bottom)
         note_inner.addStretch(1)
         row.addWidget(self.note_card, 2)
 

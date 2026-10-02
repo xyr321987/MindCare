@@ -21,7 +21,8 @@ import argparse
 import sys
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QThreadPool, QTimer, Signal
+from PySide6.QtCore import Qt, QSize, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -354,6 +355,8 @@ class SideNav(QWidget):
         self.settings_button.setObjectName("NavItem")
         self.settings_button.setCursor(Qt.PointingHandCursor)
         self.settings_button.setFocusPolicy(Qt.StrongFocus)
+        self.settings_button.setIcon(QIcon(svg_pixmap("icon_settings.svg", 18, 18)))
+        self.settings_button.setIconSize(QSize(18, 18))
         self.settings_button.clicked.connect(self._open_settings)
         self._bottom_layout.addWidget(self.settings_button)
 
@@ -386,7 +389,8 @@ class SideNav(QWidget):
 
         self._group.idClicked.connect(self._on_item_clicked)
 
-    def add_page(self, page: QWidget, title: str, *, bottom: bool = False) -> None:
+    def add_page(self, page: QWidget, title: str, *, bottom: bool = False,
+                 icon: str = "") -> None:
         """追加一个内容页 + 对应导航按钮（`bottom=True` 放到底部「关于」区）。"""
         index = len(self._pages)
         button = QPushButton(title, self.nav_bar)
@@ -394,6 +398,9 @@ class SideNav(QWidget):
         button.setCheckable(True)
         button.setFocusPolicy(Qt.StrongFocus)
         button.setCursor(Qt.PointingHandCursor)
+        if icon:
+            button.setIcon(QIcon(svg_pixmap(icon, 18, 18)))
+            button.setIconSize(QSize(18, 18))
         self._group.addButton(button, index)
         if bottom:
             target = self._bottom_layout
@@ -513,12 +520,17 @@ class StudentMainWindow(QMainWindow):
             profile_provider=self._current_profile, standalone=True,
             client=self.client, runner=self.runner)
         self.about_page = AboutTab()
-        self.tabs.add_page(self.home_page, COPY["home.nav.home"])
-        self.tabs.add_page(self.questionnaire_page, COPY["c.tab.questionnaire"])
-        self.tabs.add_page(self.treehole_page, COPY["s.treehole.tab.title"])
-        self.tabs.add_page(self.profile_page, COPY["c.tab.profile"])
-        self.tabs.add_page(self.appointment_page, COPY["c.tab.appointment"])
-        self.tabs.add_page(self.about_page, COPY["c.tab.about"], bottom=True)
+        self.tabs.add_page(self.home_page, COPY["home.nav.home"], icon="icon_home.svg")
+        self.tabs.add_page(self.questionnaire_page, COPY["c.tab.questionnaire"],
+                           icon="icon_questionnaire.svg")
+        self.tabs.add_page(self.treehole_page, COPY["s.treehole.tab.title"],
+                           icon="icon_treehole.svg")
+        self.tabs.add_page(self.profile_page, COPY["c.tab.profile"],
+                           icon="icon_profile.svg")
+        self.tabs.add_page(self.appointment_page, COPY["c.tab.appointment"],
+                           icon="icon_appointment.svg")
+        self.tabs.add_page(self.about_page, COPY["c.tab.about"], bottom=True,
+                           icon="icon_about.svg")
         self.tabs.set_settings_target(self.about_page)
 
         self.stack.addWidget(self.login_view)
