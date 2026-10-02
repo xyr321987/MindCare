@@ -107,6 +107,14 @@ def run() -> int:
     check(login.__class__.__name__ == "LoginPage", "启动后进入登录页")
     check(hasattr(login, "work_edit") and hasattr(login, "pwd_edit"), "登录页控件完整")
 
+    print("【5.5】登录页密码错误红字")
+    from desktop_common.api import ApiError
+    login._on_login_fail(ApiError(1001, "密码错误", "/auth/login", field="password"))
+    pump(app)
+    check(login.error_label.isVisible(), "密码错误提示可见")
+    check(login.error_label.text() == "密码错误", "提示文案为「密码错误」")
+    check(login.error_label.objectName() == "Error", "错误标签使用 Error 样式（红字）")
+
     print("【6】导出零正文字段")
     forbidden_cols = {"detail", "plain_note", "content", "body", "text", "treehole"}
     keys = {k for k, _ in ExportRow.COLUMNS}

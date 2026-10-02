@@ -85,9 +85,9 @@ class LoginPage(QWidget):
         work_id = self.work_edit.text().strip()
         pwd = self.pwd_edit.text()
         if not work_id or not pwd:
-            self.error_label.setText("请填写工号和口令")
+            self._set_error("请填写工号和口令")
             return
-        self.error_label.setText("")
+        self._set_error("")
         self._set_form_enabled(False)
         self.login_btn.setText("登录中…")
 
@@ -104,9 +104,18 @@ class LoginPage(QWidget):
         self.login_btn.setText("登录")
         self._set_form_enabled(True)
         if isinstance(exc, ApiError) and str(exc.code) in ("network", "timeout"):
-            self.error_label.setText("连不上后端服务，请确认服务端已启动")
+            self._set_error("连不上后端服务，请确认服务端已启动")
         else:
-            self.error_label.setText(str(getattr(exc, "message", exc)) or "登录没成功，请再试一次")
+            self._set_error(str(getattr(exc, "message", exc)) or "登录没成功，请再试一次")
+
+    def _set_error(self, text: str) -> None:
+        """显示/隐藏错误提示。
+
+        `make_error("")` 初始是**隐藏**的（空文案即不可见），所以这里除了改文案，
+        还必须显式切可见性 —— 否则登录失败时错误红字永远不出现。
+        """
+        self.error_label.setText(text)
+        self.error_label.setVisible(bool(text))
 
     def _set_form_enabled(self, enabled: bool) -> None:
         self.work_edit.setEnabled(enabled)
