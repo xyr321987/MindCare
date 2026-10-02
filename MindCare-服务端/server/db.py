@@ -16,6 +16,7 @@ import threading
 from typing import Any, Dict, Iterable, List, Optional
 
 from . import schedule as sched
+from .teacher_store import TEACHER_SCHEMA, TeacherStore
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS students (
@@ -31,15 +32,6 @@ CREATE TABLE IF NOT EXISTS credentials (
     password_hash TEXT NOT NULL,
     salt         TEXT NOT NULL,
     updated_ts   TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS teachers (
-    teacher_id TEXT PRIMARY KEY,
-    name       TEXT NOT NULL
-);
-CREATE TABLE IF NOT EXISTS teacher_credentials (
-    teacher_id    TEXT PRIMARY KEY REFERENCES teachers(teacher_id),
-    password_hash TEXT NOT NULL,
-    salt          TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS sessions (
     token      TEXT PRIMARY KEY,
@@ -147,13 +139,6 @@ CREATE TABLE IF NOT EXISTS waitlist (
     created_ts    TEXT NOT NULL,
     updated_ts    TEXT NOT NULL
 );
-CREATE TABLE IF NOT EXISTS teacher_availability (
-    teacher_id TEXT NOT NULL REFERENCES teachers(teacher_id),
-    weekday    INTEGER NOT NULL,
-    period     INTEGER NOT NULL,
-    active     INTEGER NOT NULL DEFAULT 1,
-    PRIMARY KEY (teacher_id, weekday, period)
-);
 CREATE TABLE IF NOT EXISTS warnings (
     warning_id   TEXT PRIMARY KEY,
     student_id   TEXT NOT NULL REFERENCES students(student_id),
@@ -186,11 +171,6 @@ CREATE INDEX IF NOT EXISTS idx_appt_slot ON appointments(slot);
 CREATE INDEX IF NOT EXISTS idx_wait_slot ON waitlist(year, month, day, period, status);
 CREATE INDEX IF NOT EXISTS idx_warn_stu ON warnings(student_id);
 """
-
-#: 预置教师（决策 13/18）
-PRESET_TEACHER_ID = "tch_T001"
-PRESET_TEACHER_NAME = "心理老师"
-PRESET_TEACHER_PASSWORD = "mindcare123"
 
 #: 静态 tips 种子（契约 §2.8）
 TIPS_SEED = (
@@ -229,10 +209,15 @@ class Database:
         self._conn.execute("PRAGMA foreign_keys=ON")
         self._lock = threading.RLock()
         with self._lock:
+            # 教师分支先建：appointments / waitlist 的 teacher_id 外键指向 teachers
+            self._conn.executescript(TEACHER_SCHEMA)
             self._conn.executescript(SCHEMA)
             self._conn.commit()
         self._migrate()
         self._seed()
+        # 教师信息分支唯一 DAO（其余模块对教师数据只读、只走这里）
+        self.teacher = TeacherStore(self, hash_password, verify_password)
+        self.teacher.ensure_seed()
 
     # ------------------------------------------------------------------ 基础
     def execute(self, sql: str, params: Iterable[Any] = ()) -> sqlite3.Cursor:
@@ -286,16 +271,7 @@ class Database:
 
     # ------------------------------------------------------------------ 种子
     def _seed(self) -> None:
-        if not self.query_one("SELECT 1 FROM teachers WHERE teacher_id=?", (PRESET_TEACHER_ID,)):
-            self.execute(
-                "INSERT INTO teachers(teacher_id, name) VALUES(?,?)",
-                (PRESET_TEACHER_ID, PRESET_TEACHER_NAME),
-            )
-            salt, digest = hash_password(PRESET_TEACHER_PASSWORD)
-            self.execute(
-                "INSERT INTO teacher_credentials(teacher_id, password_hash, salt) VALUES(?,?,?)",
-                (PRESET_TEACHER_ID, digest, salt),
-            )
+        # 教师预置种子已随 TeacherStore.ensure_seed() 自洽处理，此处只管咨询室与 tips
         if not self.query_one("SELECT 1 FROM rooms"):
             self.execute(
                 "INSERT INTO rooms(room_id, name, active, created_ts) VALUES(?,?,?,?)",

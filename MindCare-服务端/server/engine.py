@@ -11,7 +11,8 @@ import time
 from typing import Any, Dict, List, Optional
 
 from . import schedule as sched
-from .db import Database, PRESET_TEACHER_ID, hash_password, verify_password
+from .db import Database, hash_password, verify_password
+from .teacher_store import PRESET_TEACHER_ID
 
 # --------------------------------------------------------------------------- 常量
 EXPIRES_SECONDS = 43200  # 12h（契约 §2.1）
@@ -149,13 +150,10 @@ def login(db: Database, body: dict) -> dict:
             raise _err(1001, "密码错误", "password")
         return _issue_session(db, "student", row["student_id"])
     if role == "teacher":
-        row = db.query_one("SELECT * FROM teachers WHERE teacher_id=?", (raw_id,))
+        row = db.teacher.get(raw_id)
         if not row:
             raise _err(2002, "教师不存在", "id")
-        cred = db.query_one(
-            "SELECT * FROM teacher_credentials WHERE teacher_id=?", (row["teacher_id"],)
-        )
-        if not cred or not verify_password(password, cred["salt"], cred["password_hash"]):
+        if not db.teacher.verify_password(row["teacher_id"], password):
             raise _err(1001, "密码错误", "password")
         return _issue_session(db, "teacher", row["teacher_id"])
     raise _err(2001, "字段 role 校验失败：只能是 student 或 teacher", "role")
@@ -173,7 +171,7 @@ def _profile(db: Database, role: str, subject_id: str) -> dict:
         r = db.query_one("SELECT * FROM students WHERE student_id=?", (subject_id,))
         return {"id": r["student_id"], "name": r["name"],
                 "class_name": r["class_name"], "role": "student"}
-    r = db.query_one("SELECT * FROM teachers WHERE teacher_id=?", (subject_id,))
+    r = db.teacher.get(subject_id)
     return {"id": r["teacher_id"], "name": r["name"],
             "class_name": None, "role": "teacher"}
 
@@ -661,37 +659,6 @@ def _promote_waitlist(db: Database, year, month, day, period,
     return apt_id
 
 
-def set_teacher_availability(db: Database, body: dict) -> dict:
-    """替换式设定某教师周期可用性（items=[{weekday, period, active}]）。
-
-    存「不可约」的显式行（active=0）；缺行 = 默认可约。全量替换保证与弹窗勾选一致。
-    """
-    teacher_id = str(body.get("teacher_id") or "")
-    t = db.query_one("SELECT 1 FROM teachers WHERE teacher_id=?", (teacher_id,))
-    if not t:
-        raise _err(2002, "教师不存在", "teacher_id")
-    items = list(body.get("items") or [])
-    db.execute("DELETE FROM teacher_availability WHERE teacher_id=?", (teacher_id,))
-    for it in items:
-        try:
-            wd, period = int(it["weekday"]), int(it["period"])
-        except (KeyError, TypeError, ValueError):
-            continue
-        if not (1 <= wd <= 7 and sched.PERIOD_INDEX_MIN <= period <= sched.PERIOD_INDEX_MAX):
-            continue
-        active = int(bool(it.get("active", True)))
-        db.execute(
-            "INSERT INTO teacher_availability(teacher_id, weekday, period, active)"
-            " VALUES(?,?,?,?)",
-            (teacher_id, wd, period, active),
-        )
-    db.commit()
-    rows = db.query(
-        "SELECT weekday, period, active FROM teacher_availability WHERE teacher_id=?",
-        (teacher_id,))
-    return {"teacher_id": teacher_id, "availability": [dict(r) for r in rows]}
-
-
 def teacher_calendar(db: Database, teacher_id: str, start: str, end: str) -> dict:
     """某教师的个人日历：区间内预约 + 停诊（含全局）+ 周期可用性。"""
     rows = db.query(
@@ -706,13 +673,11 @@ def teacher_calendar(db: Database, teacher_id: str, start: str, end: str) -> dic
         if not bdate or not (start <= bdate <= end):
             continue
         owned_blocks.append(dict(b))
-    availability = db.query(
-        "SELECT weekday, period, active FROM teacher_availability WHERE teacher_id=?",
-        (teacher_id,))
+    availability = db.teacher.list_availability(teacher_id)
     return {
         "teacher_id": teacher_id, "start": start, "end": end,
         "appointments": appts, "blocks": owned_blocks,
-        "availability": [dict(a) for a in availability],
+        "availability": list(availability),
     }
 
 
@@ -887,8 +852,7 @@ def _teacher_appointment(db: Database, a: dict, today: str) -> dict:
     """DB 预约行 → 教师端 Appointment 形状（正文按 §5 仅当天 + share 标记）。"""
     teacher_name = room_name = None
     if a.get("teacher_id"):
-        t = db.query_one("SELECT name FROM teachers WHERE teacher_id=?", (a["teacher_id"],))
-        teacher_name = t["name"] if t else None
+        teacher_name = db.teacher.get_name(a["teacher_id"])
     if a.get("room_id"):
         r = db.query_one("SELECT name FROM rooms WHERE room_id=?", (a["room_id"],))
         room_name = r["name"] if r else None
@@ -992,13 +956,8 @@ def _conflict(db: Database, slot: str, date: str, period: str,
             wd = sched.weekday_from_date(yy, mm, dd)
         except (ValueError, AttributeError):
             wd = -1
-        if wd > 0:
-            av = db.query_one(
-                "SELECT active FROM teacher_availability"
-                " WHERE teacher_id=? AND weekday=? AND period=?",
-                (teacher_id, wd, int(period)))
-            if av is not None and not bool(av["active"]):
-                return "该教师此时段不可约"
+        if wd > 0 and not db.teacher.is_available(teacher_id, wd, int(period)):
+            return "该教师此时段不可约"
     return None
 
 
@@ -1072,8 +1031,7 @@ def db_read(db: Database, resource: str, params: dict) -> Any:
         rows = db.query(sql, args)
         return {"items": [_boolify(dict(r)) for r in rows]}
     if resource == "teachers.list":
-        return {"items": [dict(r) for r in db.query(
-            "SELECT teacher_id, name FROM teachers ORDER BY teacher_id")]}
+        return {"items": db.teacher.list_all()}
     if resource == "rooms.list":
         return {"items": [dict(r) for r in db.query("SELECT * FROM rooms ORDER BY created_ts")]}
     if resource == "appointments.events":
@@ -1095,8 +1053,7 @@ def db_read(db: Database, resource: str, params: dict) -> Any:
         )
         total = sum(r["cnt"] for r in rows)
         done = sum(r["cnt"] for r in rows if r["status"] == "done")
-        teacher_names = {t["teacher_id"]: t["name"]
-                         for t in db.query("SELECT teacher_id, name FROM teachers")}
+        teacher_names = db.teacher.name_map()
         room_names = {r["room_id"]: r["name"]
                       for r in db.query("SELECT room_id, name FROM rooms")}
         by_teacher: Dict[str, int] = {}
@@ -1416,48 +1373,37 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
             raise _err(2001, "字段 name 校验失败：必须是非空字符串", "name")
         if len(password) < 4:
             raise _err(2001, "字段 password 校验失败：长度至少 4 位", "password")
-        teacher_id = new_id("tch_")
-        salt, digest = hash_password(password)
-
-        def _do(cur):
-            cur.execute("INSERT INTO teachers(teacher_id, name) VALUES(?,?)",
-                        (teacher_id, name))
-            cur.execute("INSERT INTO teacher_credentials(teacher_id, password_hash, salt) VALUES(?,?,?)",
-                        (teacher_id, digest, salt))
-        db.transaction(_do)
-        return {"teacher_id": teacher_id, "name": name}
+        return db.teacher.create(name, password)
     if action == "teachers.update":
         teacher_id = str(payload.get("teacher_id") or "")
-        if not db.query_one("SELECT * FROM teachers WHERE teacher_id=?", (teacher_id,)):
+        if not db.teacher.get(teacher_id):
             raise _err(2002, "教师不存在", "teacher_id")
         if "name" in payload and payload["name"] is not None:
-            db.execute("UPDATE teachers SET name=? WHERE teacher_id=?",
-                       (str(payload["name"]).strip(), teacher_id))
-            db.commit()
-        return dict(db.query_one("SELECT * FROM teachers WHERE teacher_id=?", (teacher_id,)))
+            db.teacher.rename(teacher_id, str(payload["name"]).strip())
+        return db.teacher.get(teacher_id)
     if action == "teachers.reset_password":
         teacher_id = str(payload.get("teacher_id") or "")
         new_password = str(payload.get("new_password") or "")
         if len(new_password) < 4:
             raise _err(2001, "字段 new_password 校验失败：长度至少 4 位", "new_password")
-        if not db.query_one("SELECT 1 FROM teachers WHERE teacher_id=?", (teacher_id,)):
+        result = db.teacher.reset_password(teacher_id, new_password)
+        if result is None:
             raise _err(2002, "教师不存在", "teacher_id")
-        salt, digest = hash_password(new_password)
-        db.execute("UPDATE teacher_credentials SET password_hash=?, salt=? WHERE teacher_id=?",
-                   (digest, salt, teacher_id))
-        db.commit()
-        return {"teacher_id": teacher_id, "reset": True}
+        return result
     if action == "teachers.delete":
         teacher_id = str(payload.get("teacher_id") or "")
         if teacher_id == PRESET_TEACHER_ID:
             raise _err(2001, "预置教师不可删除", "teacher_id")
-        db.execute("DELETE FROM teacher_availability WHERE teacher_id=?", (teacher_id,))
-        db.execute("DELETE FROM teacher_credentials WHERE teacher_id=?", (teacher_id,))
-        db.execute("DELETE FROM teachers WHERE teacher_id=?", (teacher_id,))
-        db.commit()
-        return {"teacher_id": teacher_id}
+        result = db.teacher.delete(teacher_id)
+        if result is None:
+            raise _err(2002, "教师不存在", "teacher_id")
+        return result
     if action == "teachers.availability.set":
-        return set_teacher_availability(db, payload)
+        teacher_id = str(payload.get("teacher_id") or "")
+        result = db.teacher.set_availability(teacher_id, list(payload.get("items") or []))
+        if result is None:
+            raise _err(2002, "教师不存在", "teacher_id")
+        return result
     raise _err(2001, f"未注册的动作: {action}", "action")
 
 

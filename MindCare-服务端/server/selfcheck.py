@@ -357,6 +357,14 @@ def main() -> int:
                  query={"start": "2020-01-01", "end": "2020-01-07"}, token=stu_token)
     ok(empty.get("items") == [], "区间无记录 → 空 items")
 
+    # 35 教师分支隔离：engine.py 只通过 db.teacher 访问教师数据，不直接拼教师表 SQL
+    from pathlib import Path
+    engine_src = (Path(__file__).resolve().parent / "engine.py").read_text(encoding="utf-8")
+    forbidden = ("FROM teachers", "INTO teachers", "UPDATE teachers",
+                 "DELETE FROM teachers", "teacher_credentials", "teacher_availability")
+    leaked = [t for t in forbidden if t in engine_src]
+    ok(not leaked, f"教师分支隔离：engine.py 不直接操作教师表（命中 {leaked or '无'}）")
+
     print()
     if fails:
         print(f"自检未通过：{len(fails)} 项")
