@@ -1831,6 +1831,11 @@ def check_session_persistence(app: QtWidgets.QApplication) -> None:
                  f"登出前 token={had_token}；登出后 client.token={out.client.token!r}；"
                  f"session 文件仍存在={path.exists()}；"
                  f"当前页={'登录页' if out.stack.currentWidget() is out.login_view else '其它'}")
+    REPORT.check("登出后登录框清空（不再把 stu_ 前缀的 id 当号次再登录，问题 5）",
+                 out.login_view.student_input.text() == ""
+                 and out.login_view.password_input.text() == "",
+                 f"号次框={out.login_view.student_input.text()!r}；"
+                 f"密码框={out.login_view.password_input.text()!r}")
     out.shutdown(10000)
     out.close()
     session_mod.clear_session()

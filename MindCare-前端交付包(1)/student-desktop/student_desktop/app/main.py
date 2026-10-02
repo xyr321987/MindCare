@@ -658,6 +658,11 @@ class StudentMainWindow(QMainWindow):
         self.treehole_page.set_entries([])
         self.treehole_page.set_dates([])
         self.profile_page.set_dates([])
+        # 清空登录框：登录成功后 `student_input` 会被填成 `profile.id`（`stu_` 前缀），
+        # 若不清空，退出再登录会把 `stu_2023001` 当号次发给服务端 → 学生不存在，
+        # 学生就像被锁在账号外、记录"消失"了。这里让下次登录从空白号次开始。
+        self.login_view.student_input.setText("")
+        self.login_view.password_input.setText("")
         self.show_login()
         self.login_view.set_error(message)
         # 回登录页后顺手刷新一次引擎状态：登录页虽然不能提交问卷，但"服务端在不在"
