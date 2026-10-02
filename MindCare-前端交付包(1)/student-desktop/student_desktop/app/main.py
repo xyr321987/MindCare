@@ -900,6 +900,11 @@ class StudentMainWindow(QMainWindow):
         self.questionnaire_page.show_result(scene, tips_text=str(tips.get("text") or ""))
         # 新提交后档案需要重拉（共享状态与当日记录都可能变化）
         self._load_profile_dates()
+        # 同一天连续提交时日期列表不变，`set_dates` 会跳过重拉；这里按服务端回执的
+        # `date` 显式重拉当天档案，保证「每次提交都能在档案里看到自己的记录」。
+        submitted_date = str(data.get("date") or "")
+        if submitted_date:
+            self._load_profile(submitted_date)
 
     def _on_submit_failed(self, error: Any) -> None:
         self._busy("")

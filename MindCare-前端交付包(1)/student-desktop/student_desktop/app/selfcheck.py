@@ -2176,6 +2176,58 @@ def check_ts_human(app: QtWidgets.QApplication) -> None:
     window.close()
 
 
+def check_profile_refresh_after_submit(app: QtWidgets.QApplication) -> None:
+    """提交后档案自动刷新：同一天连续提交时，日期列表不变，仍要重拉当天档案。
+
+    回归守门（问题 3）：原实现提交成功后只调 `_load_profile_dates()`，而
+    `ProfileTab.set_dates()` 在「日期列表没变」时会跳过重拉 —— 导致同一天第二次
+    提交后，档案里看不到新记录（看起来"每次只有一条记录"）。修复后按服务端回执的
+    `date` 显式重拉，保证每次提交都能进档案。
+    """
+    section("④k 提交后档案自动刷新（同一天连续提交也重拉）")
+    profile_fetches: List[str] = []
+
+    def transport(method: str, url: str, body: Optional[dict],
+                  token: Optional[str], timeout: float) -> Dict[str, Any]:
+        path_ = url.split("/api/v1", 1)[-1].split("?", 1)[0]
+        if path_ == "/health":
+            return {"code": 0, "message": "ok", "data": {
+                "status": "ok", "version": "1.0.0-stub", "engine_ready": True}}
+        if path_ == "/profile/me/dates":
+            return {"code": 0, "message": "ok", "data": {"dates": [today_str()]}}
+        if path_ == "/profile/me":
+            profile_fetches.append(url)
+            return {"code": 0, "message": "ok", "data": {
+                "date": today_str(), "submissions": [{
+                    "record_id": "rec_refresh_probe", "ts": now_iso(), "mood": "happy",
+                    "cause_category": None, "detail": None, "request_help": False}],
+                "treehole": []}}
+        return {"code": 0, "message": "ok", "data": {}}
+
+    client = ApiClient("http://127.0.0.1:9", transport=transport, session_path=False)
+    window = StudentMainWindow("http://127.0.0.1:9", client=client,
+                               restore_session=False, health_poll_ms=60000)
+    window.resize(1080, 760)
+    window.show()
+    pump(app, 100)
+    # 预置日期列表为「今天」，模拟当天已经提交过一次（日期列表不再变化）
+    window.profile_page.set_dates([today_str()])
+    wait_until(app, lambda: len(profile_fetches) >= 1, timeout_s=10,
+               label="首次进入档案的 /profile/me")
+    before = len(profile_fetches)
+
+    # 第二次提交（同一天）：日期列表不变，但仍必须重拉当天档案
+    window._on_submit_ok({"record_id": "rec_refresh_2", "date": today_str(),
+                          "result_scene": "happy_end"})
+    refreshed = wait_until(app, lambda: len(profile_fetches) > before,
+                           timeout_s=10, label="提交后重拉 /profile/me")
+    REPORT.check("同一天连续提交后档案被重新拉取（不因日期列表未变而跳过）",
+                 refreshed,
+                 f"提交前 /profile/me 请求 {before} 次，提交后 {len(profile_fetches)} 次")
+    window.shutdown(10000)
+    window.close()
+
+
 def check_suggested_copy_keys() -> None:
     """文案表键的**收录状态与回归守门**。
 
@@ -2371,6 +2423,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         check_session_expiry_1001(app)   # 要求 3
         check_student_no_prefix(app)     # 要求 5
         check_ts_human(app)              # 要求 4
+        check_profile_refresh_after_submit(app)   # 问题3：提交后档案自动刷新
         check_suggested_copy_keys()
         check_appointments_storage()
 
