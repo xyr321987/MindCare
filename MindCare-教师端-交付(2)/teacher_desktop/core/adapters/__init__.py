@@ -9,10 +9,12 @@ ui/ 只 import 本包 base.py 的协议与 core.models 的数据类。
 from .appointment_adapter import HttpAppointmentAdapter
 from .export_adapter import HttpExportAdapter
 from .reply_adapter import HttpReplyAdapter
+from .scheduling_adapter import HttpSchedulingAdapter
 from .warning_adapter import HttpWarningAdapter
 
 __all__ = [
     "HttpAppointmentAdapter",
+    "HttpSchedulingAdapter",
     "HttpWarningAdapter",
     "HttpReplyAdapter",
     "HttpExportAdapter",

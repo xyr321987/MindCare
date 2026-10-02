@@ -27,6 +27,7 @@ from .common.svg import svg_pixmap
 from .export.export_page import ExportPage
 from .overview.overview_page import OverviewPage
 from .replies.replies_page import RepliesPage
+from .stats.stats_page import StatsPage
 from .students.students_page import StudentsPage
 from .triage.triage_page import TriagePage
 from .warnings.warnings_page import WarningsPage
@@ -36,6 +37,7 @@ NAV_ITEMS = [
     ("overview", "工作预览"),
     ("triage", "分诊台"),
     ("appointments", "今日预约"),
+    ("stats", "排班统计"),
     ("warnings", "预警记录"),
     ("replies", "回复库"),
     ("export", "数据导出"),
@@ -47,6 +49,7 @@ NAV_ICONS = {
     "overview": "icon_overview.svg",
     "triage": "icon_triage.svg",
     "appointments": "icon_appointment.svg",
+    "stats": "icon_stats.svg",
     "warnings": "icon_warning.svg",
     "replies": "icon_replies.svg",
     "export": "icon_export.svg",
@@ -76,6 +79,7 @@ class MainWindow(QWidget):
             "overview": OverviewPage(ctx),
             "triage": TriagePage(ctx),
             "appointments": AppointmentsPage(ctx),
+            "stats": StatsPage(ctx),
             "warnings": WarningsPage(ctx),
             "replies": RepliesPage(ctx),
             "export": ExportPage(ctx),

@@ -24,12 +24,61 @@ class AppointmentAdapter(ABC):
 
     @abstractmethod
     def schedule(self, student_id: str, ticket_id: str,
-                 scheduled_at: str, note: Optional[str]) -> Appointment:
-        """老师选定预约时间 → 写入预约数据库。"""
+                 scheduled_at: str, note: Optional[str],
+                 teacher_id: Optional[str] = None,
+                 room_id: Optional[str] = None) -> Appointment:
+        """老师选定预约时间 → 写入预约数据库（含教师/咨询室/冲突检测）。"""
+
+    @abstractmethod
+    def reschedule(self, appointment_id: str, scheduled_at: str,
+                   teacher_id: Optional[str], room_id: Optional[str],
+                   note: Optional[str]) -> Appointment:
+        """改期预约（教师/咨询室/时间），服务端检测冲突并留痕。"""
+
+    @abstractmethod
+    def cancel(self, appointment_id: str, reason: str) -> Appointment:
+        """取消预约（记录原因，工单回退 pending）。"""
+
+    @abstractmethod
+    def no_show(self, appointment_id: str, note: str) -> Appointment:
+        """标记学生爽约（记录备注）。"""
 
     @abstractmethod
     def complete(self, appointment_id: str) -> Appointment:
         """标记预约已完成（约谈结束）。"""
+
+
+class SchedulingAdapter(ABC):
+    """调度平台辅助数据：咨询室 CRUD / 教师列表 / 预约统计 / 操作日志。"""
+
+    @abstractmethod
+    def rooms(self) -> List[dict]:
+        """全部咨询室（含启用状态）。"""
+
+    @abstractmethod
+    def create_room(self, name: str) -> dict:
+        """新建咨询室。"""
+
+    @abstractmethod
+    def update_room(self, room_id: str, *, name: Optional[str] = None,
+                    active: Optional[bool] = None) -> dict:
+        """编辑咨询室（名称/启用）。"""
+
+    @abstractmethod
+    def delete_room(self, room_id: str) -> dict:
+        """删除咨询室。"""
+
+    @abstractmethod
+    def teachers(self) -> List[dict]:
+        """全部教师（teacher_id + name）。"""
+
+    @abstractmethod
+    def stats(self, start: str, end: str) -> dict:
+        """按日期区间统计预约量/完成率/教师/咨询室/状态。"""
+
+    @abstractmethod
+    def events(self, appointment_id: str) -> List[dict]:
+        """某预约的操作日志（取消/改期/爽约等留痕）。"""
 
 
 class WarningAdapter(ABC):
@@ -90,6 +139,11 @@ class BlockAdapter(ABC):
     def set(self, year: int, month: int, day: int, period: int,
             active: bool, reason: Optional[str] = None) -> dict:
         """设定/取消某格不可预约。"""
+
+    @abstractmethod
+    def batch_set(self, items: List[dict], active: bool,
+                  reason: Optional[str] = None) -> dict:
+        """批量设定/关闭多个时段（items=[{year,month,day,period}, ...]）。"""
 
 
 class StudentAdminAdapter(ABC):

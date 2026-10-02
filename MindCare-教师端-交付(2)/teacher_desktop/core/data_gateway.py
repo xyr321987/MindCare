@@ -35,6 +35,7 @@ RESOURCE_REGISTRY: Dict[str, str] = {
     "export.classes":         "可选班级下拉列表",
     "export.rows":            "跨班问卷汇总行（零正文，仅枚举/标记列）",
     "rooms.list":             "全部咨询室（含启用状态）",
+    "teachers.list":          "全部教师（供预约选择教师）",
     "appointments.events":    "某预约的操作日志（取消/改期/爽约等留痕）",
     "stats.appointments":     "按日期区间统计预约量/完成率/教师/咨询室/状态",
 }

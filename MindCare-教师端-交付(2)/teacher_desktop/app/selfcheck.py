@@ -60,7 +60,7 @@ def run() -> int:
     check(True, f"全部 {len(modules)} 个模块可导入")
 
     print("【2】网关注册表完整性")
-    check(len(RESOURCE_REGISTRY) == 10, f"read 资源 10 项（实际 {len(RESOURCE_REGISTRY)}）")
+    check(len(RESOURCE_REGISTRY) == 11, f"read 资源 11 项（实际 {len(RESOURCE_REGISTRY)}）")
     check(len(ACTION_REGISTRY) == 16, f"write 动作 16 项（实际 {len(ACTION_REGISTRY)}）")
     for key, desc in RESOURCE_REGISTRY.items():
         check(bool(desc.strip()), f"resource {key} 有中文注释")

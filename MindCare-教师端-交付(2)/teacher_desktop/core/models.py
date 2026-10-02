@@ -138,7 +138,7 @@ class Appointment:
     """预约（预约数据库 API 到位后字段以对方为准；本形状写入协议提案）。
 
     单线流程状态：pending_request（待预约，来自求助工单）→ scheduled（已预约）
-    → done（已完成）。
+    → done（已完成）；调度升级后新增 cancelled（已取消）/ no_show（爽约）。
     """
     appointment_id: str
     student_id: str
@@ -146,12 +146,20 @@ class Appointment:
     class_name: str = ""
     ticket_id: str = ""
     scheduled_at: Optional[str] = None    # ISO8601；None=还在待预约
-    status: str = "scheduled"             # scheduled | done
+    status: str = "scheduled"             # scheduled | done | cancelled | no_show | pending_request
     note: Optional[str] = None
     created_at: Optional[str] = None
     help_text_preview: str = ""           # 求助关联说明（不含问卷正文，仅"发起了求助"）
     questionnaire: Optional[List[dict]] = None  # 共享问卷正文（share_questionnaire=true 且当天）
     treehole: Optional[List[dict]] = None       # 共享树洞正文（share_treehole=true 且当天）
+    # ---- 调度升级（多教师/多咨询室/取消改期爽约留痕）----
+    teacher_id: Optional[str] = None
+    teacher_name: Optional[str] = None
+    room_id: Optional[str] = None
+    room_name: Optional[str] = None
+    cancel_reason: Optional[str] = None
+    rescheduled_from: Optional[str] = None
+    no_show_note: Optional[str] = None
 
 
 @dataclass

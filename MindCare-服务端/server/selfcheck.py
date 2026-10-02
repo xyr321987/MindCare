@@ -206,12 +206,17 @@ def main() -> int:
     room_b = call("POST", "/db/write", token=tea_token,
                   body={"action": "rooms.create", "payload": {"name": "咨询室B"}})
     ok(bool(room_b.get("room_id")), "新建咨询室B")
+    teachers = call("POST", "/db/read", token=tea_token,
+                    body={"resource": "teachers.list", "params": {}})
+    ok(any(t["teacher_id"] == "tch_T001" for t in teachers["items"]), "教师列表含预置教师")
 
     # 21 冲突检测：同咨询室同时段
     sched_a = call("POST", "/db/write", token=tea_token, body={"action": "appointments.schedule",
                    "payload": {"student_id": "stu_2023001", "year": "2026", "month": "11", "day": "2",
                                "time": "10:00", "room_id": "rm_default", "teacher_id": "tch_T001"}})
     ok(sched_a.get("status") == "scheduled", "预约A（咨询室A 10:00）成功")
+    ok(sched_a.get("teacher_name") == "心理老师" and sched_a.get("room_name") == "咨询室A",
+       "预约行返回教师/咨询室名称")
     expect_err("POST", "/db/write",
                {"action": "appointments.schedule",
                 "payload": {"student_id": "stu_2023002", "year": "2026", "month": "11", "day": "2",

@@ -32,6 +32,7 @@ from teacher_desktop.core.adapters.warning_adapter import HttpWarningAdapter  # 
 from teacher_desktop.core.adapters.export_adapter import HttpExportAdapter  # noqa: E402
 from teacher_desktop.core.adapters.block_adapter import HttpBlockAdapter  # noqa: E402
 from teacher_desktop.core.adapters.student_admin_adapter import HttpStudentAdminAdapter  # noqa: E402
+from teacher_desktop.core.adapters.scheduling_adapter import HttpSchedulingAdapter  # noqa: E402
 
 FAILS: list[str] = []
 
@@ -220,6 +221,52 @@ def run_cases(base: str) -> None:
     except ApiError as e:
         forbid = e.code
     check(forbid == 1002, "⑯ 学生访问 /db → 1002")
+
+    # 17 咨询室 + 教师列表
+    sched_aux = HttpSchedulingAdapter(gw)
+    rooms = sched_aux.rooms()
+    check(any(r["name"] == "咨询室A" for r in rooms), "⑰ 咨询室列表含预置咨询室A")
+    rm_b = sched_aux.create_room("咨询室B")
+    check(bool(rm_b.get("room_id")), "⑰ 新建咨询室B")
+    teachers = sched_aux.teachers()
+    check(any(t["teacher_id"] == "tch_T001" for t in teachers), "⑰ 教师列表含 tch_T001")
+
+    # 18 预约带教师+咨询室 + 冲突检测
+    sch2 = appt.schedule("stu_2023001", None, "2026-11-02T10:00:00+08:00", None,
+                         teacher_id="tch_T001", room_id="rm_default")
+    check(sch2.status == "scheduled" and sch2.teacher_name == "心理老师"
+          and sch2.room_name == "咨询室A", "⑱ 预约带教师/咨询室成功并回填名称")
+    clash = None
+    try:
+        appt.schedule("stu_2023002", None, "2026-11-02T10:00:00+08:00", None,
+                      teacher_id="tch_T001", room_id="rm_default")
+    except ApiError as e:
+        clash = e.code
+    check(clash == 2001, "⑱ 同咨询室同时段冲突被拒 → 2001")
+
+    # 19 改期 / 取消 / 爽约 + 操作日志
+    resch = appt.reschedule(sch2.appointment_id, "2026-11-03T14:00:00+08:00",
+                            "tch_T001", "rm_default", "改期留痕")
+    check(resch.status == "scheduled" and resch.rescheduled_from == sch2.appointment_id,
+          "⑲ 改期留痕 rescheduled_from")
+    can = appt.cancel(resch.appointment_id, "学生临时有事")
+    check(can.status == "cancelled" and can.cancel_reason == "学生临时有事", "⑲ 取消并记录原因")
+    sch3 = appt.schedule("stu_2023002", None, "2026-11-05T09:00:00+08:00", None,
+                         teacher_id=None, room_id=rm_b["room_id"])
+    ns = appt.no_show(sch3.appointment_id, "未到未请假")
+    check(ns.status == "no_show" and ns.no_show_note == "未到未请假", "⑲ 爽约标记")
+    evts = sched_aux.events(resch.appointment_id)
+    acts = [e["action"] for e in evts]
+    check("scheduled" in acts and "rescheduled" in acts and "cancelled" in acts,
+          "⑲ 操作日志含 scheduled/rescheduled/cancelled")
+
+    # 20 批量停诊 + 统计（按咨询室名称分组）
+    blk.batch_set([{"year": "2026", "month": "11", "day": "6", "period": "3"},
+                   {"year": "2026", "month": "11", "day": "6", "period": "4"}],
+                  True, "教师会议")
+    stats = sched_aux.stats("2026-11-01", "2026-11-30")
+    check(isinstance(stats.get("total"), int) and "咨询室A" in (stats.get("by_room") or {}),
+          "⑳ 统计返回总量 + 咨询室名称分组")
 
 
 if __name__ == "__main__":

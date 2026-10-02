@@ -26,6 +26,13 @@ def _to_appointment(raw: dict) -> Appointment:
         help_text_preview=raw.get("help_text_preview", ""),
         questionnaire=raw.get("questionnaire"),
         treehole=raw.get("treehole"),
+        teacher_id=raw.get("teacher_id"),
+        teacher_name=raw.get("teacher_name"),
+        room_id=raw.get("room_id"),
+        room_name=raw.get("room_name"),
+        cancel_reason=raw.get("cancel_reason"),
+        rescheduled_from=raw.get("rescheduled_from"),
+        no_show_note=raw.get("no_show_note"),
     )
 
 
@@ -44,11 +51,41 @@ class HttpAppointmentAdapter(AppointmentAdapter):
         return [_to_appointment(r) for r in (data or {}).get("items", [])]
 
     def schedule(self, student_id: str, ticket_id: str,
-                 scheduled_at: str, note: Optional[str]) -> Appointment:
+                 scheduled_at: str, note: Optional[str],
+                 teacher_id: Optional[str] = None,
+                 room_id: Optional[str] = None) -> Appointment:
         data = self.gateway.write("appointments.schedule", {
             "student_id": student_id,
             "ticket_id": ticket_id,
             "scheduled_at": scheduled_at,
+            "note": note,
+            "teacher_id": teacher_id,
+            "room_id": room_id,
+        })
+        return _to_appointment(data or {})
+
+    def reschedule(self, appointment_id: str, scheduled_at: str,
+                   teacher_id: Optional[str], room_id: Optional[str],
+                   note: Optional[str]) -> Appointment:
+        data = self.gateway.write("appointments.reschedule", {
+            "appointment_id": appointment_id,
+            "scheduled_at": scheduled_at,
+            "teacher_id": teacher_id,
+            "room_id": room_id,
+            "note": note,
+        })
+        return _to_appointment(data or {})
+
+    def cancel(self, appointment_id: str, reason: str) -> Appointment:
+        data = self.gateway.write("appointments.cancel", {
+            "appointment_id": appointment_id,
+            "reason": reason,
+        })
+        return _to_appointment(data or {})
+
+    def no_show(self, appointment_id: str, note: str) -> Appointment:
+        data = self.gateway.write("appointments.no_show", {
+            "appointment_id": appointment_id,
             "note": note,
         })
         return _to_appointment(data or {})

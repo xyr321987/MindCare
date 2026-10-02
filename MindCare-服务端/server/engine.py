@@ -716,6 +716,13 @@ def _parse_scheduled_at(iso: str):
 
 def _teacher_appointment(db: Database, a: dict, today: str) -> dict:
     """DB 预约行 → 教师端 Appointment 形状（正文按 §5 仅当天 + share 标记）。"""
+    teacher_name = room_name = None
+    if a.get("teacher_id"):
+        t = db.query_one("SELECT name FROM teachers WHERE teacher_id=?", (a["teacher_id"],))
+        teacher_name = t["name"] if t else None
+    if a.get("room_id"):
+        r = db.query_one("SELECT name FROM rooms WHERE room_id=?", (a["room_id"],))
+        room_name = r["name"] if r else None
     item = {
         "appointment_id": a["apt_id"],
         "student_id": a["student_id"],
@@ -723,7 +730,9 @@ def _teacher_appointment(db: Database, a: dict, today: str) -> dict:
         "class_name": a["class_name"],
         "ticket_id": a["ticket_id"],
         "teacher_id": a["teacher_id"],
+        "teacher_name": teacher_name,
         "room_id": a["room_id"],
+        "room_name": room_name,
         "scheduled_at": _iso_from_appt(a),
         "status": a["status"],
         "note": a["note"],
@@ -868,6 +877,9 @@ def db_read(db: Database, resource: str, params: dict) -> Any:
         sql += " ORDER BY q.date, s.class_name, q.ts"
         rows = db.query(sql, args)
         return {"items": [_boolify(dict(r)) for r in rows]}
+    if resource == "teachers.list":
+        return {"items": [dict(r) for r in db.query(
+            "SELECT teacher_id, name FROM teachers ORDER BY teacher_id")]}
     if resource == "rooms.list":
         return {"items": [dict(r) for r in db.query("SELECT * FROM rooms ORDER BY created_ts")]}
     if resource == "appointments.events":
@@ -889,12 +901,16 @@ def db_read(db: Database, resource: str, params: dict) -> Any:
         )
         total = sum(r["cnt"] for r in rows)
         done = sum(r["cnt"] for r in rows if r["status"] == "done")
+        teacher_names = {t["teacher_id"]: t["name"]
+                         for t in db.query("SELECT teacher_id, name FROM teachers")}
+        room_names = {r["room_id"]: r["name"]
+                      for r in db.query("SELECT room_id, name FROM rooms")}
         by_teacher: Dict[str, int] = {}
         by_room: Dict[str, int] = {}
         by_status: Dict[str, int] = {}
         for r in rows:
-            t = r["teacher_id"] or "(未分配)"
-            m = r["room_id"] or "(未分配)"
+            t = teacher_names.get(r["teacher_id"], "(未分配)") if r["teacher_id"] else "(未分配)"
+            m = room_names.get(r["room_id"], "(未分配)") if r["room_id"] else "(未分配)"
             by_teacher[t] = by_teacher.get(t, 0) + r["cnt"]
             by_room[m] = by_room.get(m, 0) + r["cnt"]
             by_status[r["status"]] = by_status.get(r["status"], 0) + r["cnt"]
@@ -1161,7 +1177,7 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
 RESOURCE_REGISTRY = (
     "appointments.pending", "appointments.by_date", "blocks.list",
     "warnings.list", "replies.list", "export.classes", "export.rows",
-    "rooms.list", "appointments.events", "stats.appointments",
+    "rooms.list", "teachers.list", "appointments.events", "stats.appointments",
 )
 ACTION_REGISTRY = (
     "appointments.schedule", "appointments.complete", "blocks.set",

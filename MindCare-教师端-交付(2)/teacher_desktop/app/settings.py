@@ -46,6 +46,7 @@ def make_adapters(settings: Settings):
     from ..core.adapters.block_adapter import HttpBlockAdapter
     from ..core.adapters.export_adapter import HttpExportAdapter
     from ..core.adapters.reply_adapter import HttpReplyAdapter
+    from ..core.adapters.scheduling_adapter import HttpSchedulingAdapter
     from ..core.adapters.student_admin_adapter import HttpStudentAdminAdapter
     from ..core.adapters.warning_adapter import HttpWarningAdapter
 
@@ -57,6 +58,7 @@ def make_adapters(settings: Settings):
         export=HttpExportAdapter(gateway),
         block=HttpBlockAdapter(gateway),
         student_admin=HttpStudentAdminAdapter(gateway),
+        scheduling=HttpSchedulingAdapter(gateway),
     )
 
 
@@ -68,3 +70,4 @@ class Adapters:
     export: object
     block: object
     student_admin: object
+    scheduling: object

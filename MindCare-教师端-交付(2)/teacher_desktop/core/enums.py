@@ -60,6 +60,24 @@ RESULT_SCENES = {
     "self_care": "低落不求助时的自助建议",
 }
 
+#: 预约状态 → (中文文案, 徽标 objectName)
+APPT_STATUS = {
+    "pending_request": ("待预约", "StatusPend"),
+    "scheduled": ("已预约", "StatusSched"),
+    "done": ("已完成", "StatusDone"),
+    "cancelled": ("已取消", "StatusCancel"),
+    "no_show": ("爽约", "StatusNoShow"),
+}
+
+#: 预约操作日志动作 → 中文（查看记录弹窗用）
+APPT_EVENT_ACTION = {
+    "scheduled": "创建预约",
+    "rescheduled": "改期",
+    "cancelled": "取消预约",
+    "no_show": "标记爽约",
+    "completed": "完成约谈",
+}
+
 _TZ = timezone(timedelta(hours=8))
 
 

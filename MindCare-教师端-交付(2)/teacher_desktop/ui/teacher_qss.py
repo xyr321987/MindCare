@@ -156,6 +156,10 @@ QLabel#TimelineNodeDone {{
     min-width: 13px; max-width: 13px; min-height: 13px; max-height: 13px;
     border-radius: 7px; background-color: {T.SPROUT};
 }}
+QLabel#TimelineNodeMuted {{
+    min-width: 13px; max-width: 13px; min-height: 13px; max-height: 13px;
+    border-radius: 7px; background-color: #C4CCD6;
+}}
 QFrame#ApptCard {{
     background-color: {T.CARD};
     border: 1px solid {T.LINE};
@@ -166,6 +170,12 @@ QFrame#ApptCardDone {{
     background-color: {T.CARD};
     border: 1px solid {T.LINE};
     border-top: 3px solid {T.SPROUT};
+    border-radius: 12px;
+}}
+QFrame#ApptCardMuted {{
+    background-color: {T.CARD};
+    border: 1px solid {T.LINE};
+    border-top: 3px solid #C4CCD6;
     border-radius: 12px;
 }}
 QFrame#PendingCard {{
@@ -179,6 +189,10 @@ QLabel#StatusSched {{ font-size: 12px; color: {T.PRIMARY_INK}; background-color:
                       border-radius: 9px; padding: 2px 10px; }}
 QLabel#StatusDone {{ font-size: 12px; color: {T.INK}; background-color: {T.SPROUT};
                      border-radius: 9px; padding: 2px 10px; }}
+QLabel#StatusCancel {{ font-size: 12px; color: {T.INK_SOFT}; background-color: {DISMISSED_BG};
+                       border: 1px solid {T.LINE}; border-radius: 9px; padding: 2px 10px; }}
+QLabel#StatusNoShow {{ font-size: 12px; color: {WARN}; background-color: {WARN_TINT};
+                       border: 1px solid {WARN}; border-radius: 9px; padding: 2px 10px; }}
 
 /* ================= 预警记录 ================= */
 QFrame#WarnActiveCard {{
