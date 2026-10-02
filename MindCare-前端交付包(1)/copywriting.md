@@ -376,6 +376,37 @@
 | c.profile.chart.week.next | 下一周 |
 | c.profile.chart.empty | 这一周还没有情绪记录，先去心情那一题写写看。 |
 
+### 1.10 学生端首页（见山）
+
+> 学生登录后的默认首页：顶部欢迎区 + 四个功能卡（问卷/树洞/预约/我的档案）
+> + 最近活动 + 今日的小纸条 + 底部提示。文案一律 `home.*` 前缀。
+
+| ID | 文案 |
+|----|------|
+| home.nav.brand | 见山 |
+| home.nav.slogan | 在这里，遇见更好的自己 |
+| home.nav.home | 首页 |
+| home.nav.settings | 设置 |
+| home.welcome.hello | 你好，{name} |
+| home.welcome.subtitle | 今天的你，也在努力发光。 |
+| home.card.questionnaire.desc | 给今天的情绪做个小小的记录 |
+| home.card.treehole.desc | 把心里想说的话悄悄放进来 |
+| home.card.appointment.desc | 和老师聊一聊，让心情轻一点 |
+| home.card.profile.desc | 看看一路走来的自己 |
+| home.note.title | 今日的小纸条 |
+| home.note.change | 换一条 |
+| home.note.sign | —— 见山 |
+| home.note.1 | 你已经很努力了，不必对自己太苛刻。慢慢来，山会等你。 |
+| home.note.2 | 今天也辛苦了。休息一下，也是认真生活的一部分。 |
+| home.note.3 | 不必急着变好，先把今天过成舒服的样子。 |
+| home.note.4 | 你走过的每一步，都在慢慢把自己带到想去的地方。 |
+| home.activity.title | 最近活动 |
+| home.activity.empty | 还没有活动记录，从今天的心情打卡开始吧。 |
+| home.activity.questionnaire | 你完成了今日心情打卡。 |
+| home.activity.treehole | 你写了一篇树洞。 |
+| home.activity.appointment | 你预约了心理老师。 |
+| home.footer.line | 慢慢来，也算在前进。 |
+
 ---
 
 ## 2. 学生端 · 学校问题反馈（Q2.5）

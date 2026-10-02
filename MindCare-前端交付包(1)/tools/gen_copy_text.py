@@ -49,7 +49,7 @@ OUT_PY = ROOT / "desktop_common" / "copy_text.py"
 _TABLE_ROW = re.compile(r"^\|\s*([A-Za-z][\w.]*)\s*\|\s*(.*?)\s*\|\s*$")
 
 #: 只接受这几类 ID 前缀（文案表 §0 的场景映射）
-_ID_PREFIXES = ("s.", "t.", "c.")
+_ID_PREFIXES = ("s.", "t.", "c.", "home.")
 
 #: `_meta.word_ban` 里的禁用词 —— 生成的文案**一个都不许命中**
 WORD_BAN = ("抑郁", "焦虑", "障碍", "症状", "重度", "高危", "预警", "异常", "患者", "受试者")

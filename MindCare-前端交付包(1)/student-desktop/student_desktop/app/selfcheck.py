@@ -1355,6 +1355,15 @@ def check_ui(app: QtWidgets.QApplication,
                  all(count > 20 for count in richness.values()),
                  "不同颜色数（隔点采样）：" +
                  "、".join(f"{k}={v}" for k, v in richness.items()))
+    # 补盲区：`check_environment` 在界面树构建**之前**就查过 missing_keys，那时首页
+    # 的 home.* 键还没被请求；这里在完整界面树构建完之后**再查一次**，界面里被
+    # 引用、但文案表里没有的键会当场暴露（曾漏掉 home.* → 渲染成 ⟪缺文案:…⟫）。
+    # 过滤空串：`_FlowPage` 的某些页没定义 subtitle_key，会调 COPY.get("")，
+    # 把空串记成"缺失"，属无害副产物（不是真缺键），这里不算。
+    missing_after_ui = [k for k in COPY.missing_keys if str(k).strip()]
+    REPORT.check("构建完整界面树后无缺文案键（界面引用的键都在文案表里）",
+                 not missing_after_ui,
+                 f"界面树构建后缺失 {len(missing_after_ui)} 个键：{missing_after_ui or '无'}")
     return window
 
 

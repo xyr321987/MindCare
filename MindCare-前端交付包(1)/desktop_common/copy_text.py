@@ -4,7 +4,7 @@
 唯一事实源： `mindcare/copywriting.md`（点分 ID）+ `mindcare/copywriting.json`
 （`OVERRIDES` / `JSON_ONLY` 的条目运行时读 JSON，见生成器头部说明）。
 
-共 426 条。
+共 449 条。
 """
 from __future__ import annotations
 
@@ -113,6 +113,29 @@ TEXT: Dict[str, str] = {
     "c.tab.appointment": "预约",
     "c.tab.profile": "我的档案",
     "c.tab.questionnaire": "问卷",
+    "home.activity.appointment": "你预约了心理老师。",
+    "home.activity.empty": "还没有活动记录，从今天的心情打卡开始吧。",
+    "home.activity.questionnaire": "你完成了今日心情打卡。",
+    "home.activity.title": "最近活动",
+    "home.activity.treehole": "你写了一篇树洞。",
+    "home.card.appointment.desc": "和老师聊一聊，让心情轻一点",
+    "home.card.profile.desc": "看看一路走来的自己",
+    "home.card.questionnaire.desc": "给今天的情绪做个小小的记录",
+    "home.card.treehole.desc": "把心里想说的话悄悄放进来",
+    "home.footer.line": "慢慢来，也算在前进。",
+    "home.nav.brand": "见山",
+    "home.nav.home": "首页",
+    "home.nav.settings": "设置",
+    "home.nav.slogan": "在这里，遇见更好的自己",
+    "home.note.1": "你已经很努力了，不必对自己太苛刻。慢慢来，山会等你。",
+    "home.note.2": "今天也辛苦了。休息一下，也是认真生活的一部分。",
+    "home.note.3": "不必急着变好，先把今天过成舒服的样子。",
+    "home.note.4": "你走过的每一步，都在慢慢把自己带到想去的地方。",
+    "home.note.change": "换一条",
+    "home.note.sign": "—— 见山",
+    "home.note.title": "今日的小纸条",
+    "home.welcome.hello": "你好，{name}",
+    "home.welcome.subtitle": "今天的你，也在努力发光。",
     "s.appointment.confirm": "确认预约",
     "s.appointment.day": "日期",
     "s.appointment.error.blocked": "老师把这段时间设成了不可预约，换一个吧。",
