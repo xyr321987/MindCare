@@ -426,7 +426,13 @@ class QuestionnaireTab(QWidget):
             self.show_page(self.unmapped.page_id)
             return
         if tips_text:
-            page.set_body(tips_text)
+            # self_care 的心情小贴士渲染在 `extra`（`s.end.selfcare.tips`），
+            # 其余场景（plain_tips 的正文即贴士、happy_end/help_sent 的正文即回应）
+            # 都在 `body`。老师回复库按 result_scene 匹配后要落到正确的位置。
+            if scene == "self_care":
+                page.set_extra(tips_text)
+            else:
+                page.set_body(tips_text)
         self.show_page(scene_to_page_id(scene))
 
     def reset(self) -> None:

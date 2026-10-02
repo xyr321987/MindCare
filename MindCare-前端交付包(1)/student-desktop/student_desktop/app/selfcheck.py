@@ -1024,6 +1024,19 @@ def check_ui(app: QtWidgets.QApplication,
     REPORT.check("show_result() 能切到 4 个结果页",
                  all(switched[s] == RESULT_PAGES[s] for s in RESULT_SCENES),
                  json.dumps(switched, ensure_ascii=False))
+    # 老师回复库按 result_scene 匹配后落位要正确（问题 6）：self_care 的心情小贴士
+    # 渲染在 extra（`s.end.selfcare.tips`），plain_tips 的贴士就是 body。
+    window.questionnaire_page.show_result("self_care", tips_text="自定义：先深呼吸十次。")
+    sc_page = window.questionnaire_page.result_pages["self_care"]
+    window.questionnaire_page.show_result("plain_tips", tips_text="自定义：先深呼吸十次。")
+    pt_page = window.questionnaire_page.result_pages["plain_tips"]
+    REPORT.check("回复落位正确：self_care → extra（不覆盖正文），plain_tips → body",
+                 sc_page.extra_label.text() == "自定义：先深呼吸十次。"
+                 and sc_page.body_label.text() != "自定义：先深呼吸十次。"
+                 and pt_page.body_label.text() == "自定义：先深呼吸十次。",
+                 f"self_care.extra={sc_page.extra_label.text()!r}；"
+                 f"self_care.body={sc_page.body_label.text()!r}；"
+                 f"plain_tips.body={pt_page.body_label.text()!r}")
     # 未登记值走可见兜底页（不静默）
     window.questionnaire_page.show_result("brand_new_scene")
     REPORT.check("未登记的 result_scene → 可见兜底页（不静默失败）",
