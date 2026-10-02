@@ -12,9 +12,10 @@ from __future__ import annotations
 
 from typing import Dict
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QSize, Signal
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
-    QButtonGroup, QFrame, QHBoxLayout, QPushButton,
+    QButtonGroup, QFrame, QHBoxLayout, QLabel, QPushButton,
     QStackedWidget, QVBoxLayout, QWidget,
 )
 
@@ -22,14 +23,17 @@ from desktop_common.widgets import make_button, make_label
 
 from .appointments.appointments_page import AppointmentsPage
 from .common.async_mixin import PageContext
+from .common.svg import svg_pixmap
 from .export.export_page import ExportPage
+from .overview.overview_page import OverviewPage
 from .replies.replies_page import RepliesPage
 from .students.students_page import StudentsPage
 from .triage.triage_page import TriagePage
 from .warnings.warnings_page import WarningsPage
 
-#: (导航 key, 文案) —— 新增页面只改这里
+#: (导航 key, 文案) —— 新增页面只改这里；「工作预览」为默认首页
 NAV_ITEMS = [
+    ("overview", "工作预览"),
     ("triage", "分诊台"),
     ("appointments", "今日预约"),
     ("warnings", "预警记录"),
@@ -37,6 +41,17 @@ NAV_ITEMS = [
     ("export", "数据导出"),
     ("students", "学生管理"),
 ]
+
+#: 导航图标（key -> SVG 文件名）
+NAV_ICONS = {
+    "overview": "icon_overview.svg",
+    "triage": "icon_triage.svg",
+    "appointments": "icon_appointment.svg",
+    "warnings": "icon_warning.svg",
+    "replies": "icon_replies.svg",
+    "export": "icon_export.svg",
+    "students": "icon_students.svg",
+}
 
 
 class MainWindow(QWidget):
@@ -56,8 +71,9 @@ class MainWindow(QWidget):
         self.stack = QStackedWidget()
         body.addWidget(self.stack, 1)
 
-        # ---- 五个页面（顺序与 NAV_ITEMS 对齐）
+        # ---- 页面（顺序与 NAV_ITEMS 对齐；overview 为默认首页）
         self.pages: Dict[str, QWidget] = {
+            "overview": OverviewPage(ctx),
             "triage": TriagePage(ctx),
             "appointments": AppointmentsPage(ctx),
             "warnings": WarningsPage(ctx),
@@ -68,7 +84,7 @@ class MainWindow(QWidget):
         for key, _ in NAV_ITEMS:
             self.stack.addWidget(self.pages[key])
 
-        self._select("triage")
+        self._select("overview")
 
     # ------------------------------------------------------------------ 侧边栏
     def _build_sidebar(self, profile: dict) -> QFrame:
@@ -79,8 +95,16 @@ class MainWindow(QWidget):
         layout.setContentsMargins(16, 20, 16, 18)
         layout.setSpacing(8)
 
-        name = make_label("MindCare", "AppName")
-        layout.addWidget(name)
+        # 品牌：山峰 Logo + 见山 + 副标题
+        brand_row = QHBoxLayout()
+        brand_row.setSpacing(10)
+        logo = QLabel(bar)
+        logo.setPixmap(svg_pixmap("brand_mark.svg", 30, 30))
+        logo.setFixedSize(30, 30)
+        brand_row.addWidget(logo)
+        brand_row.addWidget(make_label("见山", "AppName"))
+        brand_row.addStretch(1)
+        layout.addLayout(brand_row)
         layout.addWidget(make_label("教师关怀工作台", "AppSub"))
         layout.addSpacing(14)
 
@@ -92,15 +116,19 @@ class MainWindow(QWidget):
             btn.setCheckable(True)
             btn.setFocusPolicy(Qt.StrongFocus)
             btn.setCursor(Qt.PointingHandCursor)
+            icon_name = NAV_ICONS.get(key)
+            if icon_name:
+                btn.setIcon(QIcon(svg_pixmap(icon_name, 18, 18)))
+                btn.setIconSize(QSize(18, 18))
             btn.clicked.connect(lambda _=False, k=key: self._select(k))
             self.nav_group.addButton(btn, index)
             layout.addWidget(btn)
 
         layout.addStretch(1)
 
-        # 底部：数据源标记 / 教师姓名 / 退出
-        server = getattr(self.ctx.settings, "server", "")
-        layout.addWidget(make_label(f"数据源：{server}", "ModeTag"))
+        # 底部：支持中心 / 设置 / 教师身份 / 退出
+        layout.addWidget(make_label("支持中心", "Hint"))
+        layout.addWidget(make_label("设置", "Hint"))
         layout.addWidget(make_label(f"当前老师：{profile.get('name', '老师')}", "Hint"))
         logout = make_button("退出登录", "ghost")
         logout.clicked.connect(self.logout_requested.emit)

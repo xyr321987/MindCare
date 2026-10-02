@@ -25,6 +25,7 @@ from typing import Dict, Tuple
 __all__ = [
     "BG", "CARD", "INK", "INK_SOFT", "LINE", "MIST", "CORAL", "SPROUT",
     "PRIMARY_INK", "FOCUS_RING", "DANGER_SOFT",
+    "BRAND", "BRAND_SELECTED", "SUCCESS", "PENDING", "WARNING", "AUX_GRAY",
     "RADIUS", "CARD_PADDING", "FONT_BODY", "FONT_TITLE", "FONT_SMALL",
     "LINE_HEIGHT", "MIN_TAP", "ANIM_MS", "PALETTE", "SIZES",
     "FONT_CANDIDATES", "FONT_SEARCH_DIRS",
@@ -33,24 +34,35 @@ __all__ = [
 ]
 
 # --------------------------------------------------------------------------- 调色板
+# 见山教师端 · 统一设计变量（低饱和蓝灰体系）
 
-BG = "#FAF7F2"            # 窗口底色（米白）
-CARD = "#FFFFFF"          # 卡片面
-INK = "#3A3A38"           # **正文文字**（不用主色写正文）
-INK_SOFT = "#6E6A63"      # 次要文字
-LINE = "#E6E0D6"          # 分隔线
-MIST = "#A8C5D6"          # 主色（雾蓝）：选中态填充、进度条、主按钮**底色**
-CORAL = "#F2B8A0"         # 辅助色（柔珊瑚）：P1 关注标记的**底色**，不是文字色
-SPROUT = "#B7D7B9"        # 平静 / 正向
-PRIMARY_INK = "#2F4A57"   # 雾蓝上的文字色（白字压在雾蓝上对比度不足）
-FOCUS_RING = "#7FA6BA"    # 焦点环（雾蓝加深，用于键盘可达样式）
-DANGER_SOFT = "#C9836B"   # 柔化的提示色（**不是刺眼红**，只用于错误文本，仍是深色字）
+BG = "#F5F7FA"            # 主背景（极浅蓝灰）
+CARD = "#FFFFFF"          # 卡片背景（纯白）
+INK = "#243447"           # **正文文字**（深蓝灰）
+INK_SOFT = "#64748B"      # 次要文字（中性灰）
+LINE = "#E4E9F0"          # 分隔线 / 边框（极浅灰蓝）
+MIST = "#EAF1F7"          # 选中背景（浅蓝）
+CORAL = "#F7E4E1"         # 预警浅底（浅红）
+SPROUT = "#DFEEE6"        # 成功浅底（浅绿）
+PRIMARY_INK = "#4E7FAE"   # 品牌主色（低饱和蓝）
+FOCUS_RING = "#7AA7CC"    # 焦点环（品牌蓝加深）
+DANGER_SOFT = "#B85C55"   # 预警/错误（克制红）
+
+#: 见山教师端语义色
+BRAND = "#4E7FAE"          # 品牌主色
+BRAND_SELECTED = "#EAF1F7" # 选中背景
+SUCCESS = "#38765B"        # 成功状态
+PENDING = "#A66A24"        # 待处理状态
+WARNING = "#B85C55"        # 预警状态
+AUX_GRAY = "#526174"       # 分割线与辅助色
 
 #: 供别的模块（含教师端）枚举主题变量，避免各处硬编码色值
 PALETTE: Dict[str, str] = {
     "BG": BG, "CARD": CARD, "INK": INK, "INK_SOFT": INK_SOFT, "LINE": LINE,
     "MIST": MIST, "CORAL": CORAL, "SPROUT": SPROUT, "PRIMARY_INK": PRIMARY_INK,
     "FOCUS_RING": FOCUS_RING, "DANGER_SOFT": DANGER_SOFT,
+    "BRAND": BRAND, "BRAND_SELECTED": BRAND_SELECTED, "SUCCESS": SUCCESS,
+    "PENDING": PENDING, "WARNING": WARNING, "AUX_GRAY": AUX_GRAY,
 }
 
 # --------------------------------------------------------------------------- 尺寸

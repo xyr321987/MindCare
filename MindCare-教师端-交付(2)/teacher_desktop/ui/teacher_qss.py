@@ -10,17 +10,17 @@ from __future__ import annotations
 
 from desktop_common import theme as T
 
-#: 教师端特有色（HTML 雏形已有值的延续，非基础色板的补充）
-BANNER_BG = "#F3EAD9"      # 断网/提示横幅：暖米色
+#: 教师端特有色（见山统一蓝灰体系）
+BANNER_BG = "#EAF1F7"      # 提示横幅：浅蓝
 SIDEBAR_BG = "#FFFFFF"
-SELECTED_BG = "#EDF3F7"    # 选中行/选中导航：雾蓝浅底
-HOVER_BG = "#F4F1EC"
-DRAWER_BG = "#FAF6F0"
-CORAL_DEEP = "#E39B7F"     # P2
-GREY = "#C9C4BD"           # P3
-WARN = "#B8A9C9"           # 连续低落预警：紫灰（与 P1 珊瑚区分）
-WARN_TINT = "#EFEAF6"
-DISMISSED_BG = "#F6F3EE"
+SELECTED_BG = "#EAF1F7"    # 选中行/选中导航：浅蓝（品牌选中）
+HOVER_BG = "#F0F4F8"       # 悬停：浅蓝灰
+DRAWER_BG = "#F7F9FC"      # 抽屉：极浅
+CORAL_DEEP = "#FBE9D8"     # P2（柔和橙）
+GREY = "#EDF1F5"           # P3（浅灰蓝）
+WARN = "#B85C55"           # 预警：克制红
+WARN_TINT = "#F7E4E1"      # 预警浅底
+DISMISSED_BG = "#F4F6F9"   # 已处理浅灰
 
 
 def build_teacher_qss() -> str:
@@ -256,4 +256,20 @@ QCalendarWidget QAbstractItemView {{
     background: {T.CARD}; color: {T.INK};
     selection-background-color: {T.MIST}; selection-color: {T.PRIMARY_INK};
 }}
+
+/* ================= 工作预览 ================= */
+QLabel#SectionTitle {{ font-size: 18px; font-weight: 600; color: {T.INK}; }}
+QLabel#StatValue {{ font-size: 26px; font-weight: 600; color: {T.INK}; }}
+QLabel#StatTitle {{ font-size: 13px; color: {T.INK_SOFT}; }}
+QLabel#StatIcon {{ border-radius: 18px; }}
+QLabel#StatIcon[tone="help"] {{ background-color: {T.MIST}; }}
+QLabel#StatIcon[tone="appointment"] {{ background-color: {CORAL_DEEP}; }}
+QLabel#StatIcon[tone="warning"] {{ background-color: {WARN_TINT}; }}
+QLabel#StatIcon[tone="done"] {{ background-color: {T.SPROUT}; }}
+QFrame#OverviewTodoRow {{
+    background: transparent; border: none; border-bottom: 1px solid {T.LINE};
+}}
+QLabel#OverviewTodoDesc {{ font-size: 13px; color: {T.INK_SOFT}; }}
+QLabel#OverviewActivityText {{ font-size: 13px; color: {T.INK}; }}
+QLabel#OverviewActivityTime {{ font-size: 12px; color: {T.INK_SOFT}; }}
 """
