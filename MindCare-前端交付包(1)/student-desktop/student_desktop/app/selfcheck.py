@@ -808,12 +808,12 @@ def check_ui(app: QtWidgets.QApplication,
                  (f"；缺失 {missing}" if missing else ""))
 
     tab_titles = [window.tabs.tabText(i) for i in range(window.tabs.count())]
-    REPORT.check("主窗口 Tab 数量与标题来自文案表",
-                 window.tabs.count() == 5
-                 and tab_titles == [COPY["c.tab.questionnaire"], COPY["s.treehole.tab.title"],
-                                    COPY["c.tab.profile"], COPY["c.tab.appointment"],
-                                    COPY["c.tab.about"]],
-                 f"tabs={tab_titles}（问卷 / 树洞 / 我的档案 / 预约 / 关于）")
+    REPORT.check("主窗口 Tab 数量与标题来自文案表（首页 + 问卷/树洞/档案/预约 + 关于）",
+                 window.tabs.count() == 6
+                 and tab_titles == [COPY["home.nav.home"], COPY["c.tab.questionnaire"],
+                                    COPY["s.treehole.tab.title"], COPY["c.tab.profile"],
+                                    COPY["c.tab.appointment"], COPY["c.tab.about"]],
+                 f"tabs={tab_titles}（首页 / 问卷 / 树洞 / 我的档案 / 预约 / 关于）")
 
     # --- 独立「预约」标签页：选格 → 确认 → POST /appointments + 成功提示 + 清空选择 ----
     appt_tab = window.appointment_page

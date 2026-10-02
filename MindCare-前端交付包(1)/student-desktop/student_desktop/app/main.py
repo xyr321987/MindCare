@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
     QHBoxLayout,
+    QLabel,
     QLineEdit,
     QMainWindow,
     QPushButton,
@@ -59,6 +60,7 @@ from ..ui.profile import ProfileTab
 from ..ui.pages import AppointmentPage, NoticePage
 from ..ui.questionnaire import QuestionnaireTab
 from ..ui.treehole import TreeholeTab
+from ..ui.home import HomePage
 
 __all__ = [
     "LoginView", "StudentMainWindow", "AboutTab", "build_client", "main",
@@ -285,13 +287,16 @@ class AboutTab(QWidget):
 
 
 class SideNav(QWidget):
-    """左侧深色导航栏 + 内容栈（`QTabWidget` 西向的自定义替代）。
+    """左侧导航栏（浅米白）+ 内容栈（`QTabWidget` 西向的自定义替代）。
 
-    Qt 的 `QTabWidget` 在 West 位置会**强制把 tab 文字竖排**（窄窄的书签条），
-    无法做参考设计里「深色侧边栏 + 横排菜单」的效果，故用 `QPushButton` 列表
-    （`QButtonGroup` 互斥）+ `QStackedWidget` 自建。
+    结构（见山规范）::
 
-    为免改动自检与主窗口里大量 `tabs` 用法，这里保留了 `QTabWidget` 的常用接口：
+        顶部品牌（「见山」+ 标语）
+        中部功能菜单（首页 / 问卷 / 树洞 / 我的档案 / 预约）
+        底部（设置 / 关于 / 用户信息）
+
+    菜单与「关于」都是可勾选按钮（`QButtonGroup` 互斥），点击切换 `QStackedWidget`。
+    为免改动自检与主窗口里大量 `tabs` 用法，保留 `QTabWidget` 常用接口：
     `count / tabText / widget / currentWidget / setCurrentWidget / currentIndex /
     setCurrentIndex / indexOf` 与 `currentChanged(int)`。
     """
@@ -306,6 +311,8 @@ class SideNav(QWidget):
         self._buttons: List[QPushButton] = []
         self._group = QButtonGroup(self)
         self._group.setExclusive(True)
+        #: 「设置」入口指向的页面（主窗口在创建完「关于」页后注入）
+        self._settings_target: Optional[QWidget] = None
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -313,9 +320,55 @@ class SideNav(QWidget):
 
         self.nav_bar = QWidget(self)
         self.nav_bar.setObjectName("SideNavBar")
-        self._nav_layout = QVBoxLayout(self.nav_bar)
-        self._nav_layout.setContentsMargins(12, 16, 12, 16)
-        self._nav_layout.setSpacing(6)
+        nav = QVBoxLayout(self.nav_bar)
+        nav.setContentsMargins(18, 26, 18, 20)
+        nav.setSpacing(6)
+
+        # ---- 品牌 ----
+        self.brand_label = make_label(COPY["home.nav.brand"], "NavBrand", word_wrap=False)
+        nav.addWidget(self.brand_label)
+        self.slogan_label = make_label(COPY["home.nav.slogan"], "NavBrandSlogan", word_wrap=False)
+        nav.addWidget(self.slogan_label)
+        nav.addSpacing(22)
+
+        # ---- 菜单 ----
+        self._menu_layout = QVBoxLayout()
+        self._menu_layout.setSpacing(6)
+        nav.addLayout(self._menu_layout)
+        nav.addStretch(1)
+
+        # ---- 底部：设置 / 关于 / 用户信息 ----
+        self._bottom_layout = QVBoxLayout()
+        self._bottom_layout.setSpacing(6)
+        nav.addLayout(self._bottom_layout)
+
+        self.settings_button = QPushButton(COPY["home.nav.settings"], self.nav_bar)
+        self.settings_button.setObjectName("NavItem")
+        self.settings_button.setCursor(Qt.PointingHandCursor)
+        self.settings_button.setFocusPolicy(Qt.StrongFocus)
+        self.settings_button.clicked.connect(self._open_settings)
+        self._bottom_layout.addWidget(self.settings_button)
+
+        user_card = QWidget(self.nav_bar)
+        user_card.setObjectName("NavUserCard")
+        user_lay = QHBoxLayout(user_card)
+        user_lay.setContentsMargins(12, 12, 12, 12)
+        user_lay.setSpacing(10)
+        self.avatar = QLabel("", user_card)
+        self.avatar.setObjectName("NavAvatar")
+        self.avatar.setAlignment(Qt.AlignCenter)
+        self.avatar.setFixedSize(36, 36)
+        user_lay.addWidget(self.avatar)
+        user_text = QVBoxLayout()
+        user_text.setSpacing(1)
+        self.user_name = make_label("", "NavUserName", word_wrap=False)
+        self.user_class = make_label("", "NavUserClass", word_wrap=False)
+        user_text.addWidget(self.user_name)
+        user_text.addWidget(self.user_class)
+        user_lay.addLayout(user_text)
+        user_lay.addStretch(1)
+        self._user_card = user_card
+        self._bottom_layout.addWidget(self._user_card)
 
         self.pages = QStackedWidget(self)
         self.pages.setObjectName("MainPages")
@@ -325,8 +378,8 @@ class SideNav(QWidget):
 
         self._group.idClicked.connect(self._on_item_clicked)
 
-    def add_page(self, page: QWidget, title: str) -> None:
-        """追加一个内容页 + 对应导航按钮。"""
+    def add_page(self, page: QWidget, title: str, *, bottom: bool = False) -> None:
+        """追加一个内容页 + 对应导航按钮（`bottom=True` 放到底部「关于」区）。"""
         index = len(self._pages)
         button = QPushButton(title, self.nav_bar)
         button.setObjectName("NavItem")
@@ -334,12 +387,34 @@ class SideNav(QWidget):
         button.setFocusPolicy(Qt.StrongFocus)
         button.setCursor(Qt.PointingHandCursor)
         self._group.addButton(button, index)
-        self._nav_layout.addWidget(button)
+        if bottom:
+            target = self._bottom_layout
+            at = target.indexOf(self._user_card)
+            target.insertWidget(max(0, at), button)
+        else:
+            self._menu_layout.addWidget(button)
         self._buttons.append(button)
         self._pages.append(page)
         self.pages.addWidget(page)
         if index == 0:
             button.setChecked(True)
+
+    def set_settings_target(self, page: QWidget) -> None:
+        """「设置」入口指向的页面（无独立设置页，暂指向「关于」）。"""
+        self._settings_target = page
+
+    def set_user(self, profile: Optional[dict]) -> None:
+        """更新底部用户信息（头像首字 + 姓名 + 班级）。"""
+        profile = profile or {}
+        name = str(profile.get("name") or "").strip()
+        class_name = str(profile.get("class_name") or "").strip()
+        self.user_name.setText(name)
+        self.user_class.setText(class_name)
+        self.avatar.setText(name[:1] if name else "")
+
+    def _open_settings(self) -> None:
+        if self._settings_target is not None:
+            self.setCurrentWidget(self._settings_target)
 
     # -- 兼容 QTabWidget 的常用接口 -----------------------------------------
 
@@ -389,8 +464,9 @@ class StudentMainWindow(QMainWindow):
                  health_poll_ms: int = 10000) -> None:
         super().__init__()
         self.setObjectName("StudentMainWindow")
-        self.setWindowTitle(COPY["s.treehole.tab.title"] + " · MindCare")
-        self.resize(1080, 760)
+        self.setWindowTitle(COPY["home.nav.brand"])
+        self.resize(1440, 900)
+        self.setMinimumSize(1100, 700)
 
         self.client = client or build_client(server)
         self.runner = TaskRunner(pool or QThreadPool.globalInstance())
@@ -419,6 +495,7 @@ class StudentMainWindow(QMainWindow):
         self.tabs = SideNav()
 
         #: 预约页要显示"班级 / 学号"，取当前登录档案（`client.profile` 由登录写入）
+        self.home_page = HomePage()
         self.questionnaire_page = QuestionnaireTab(
             profile_provider=self._current_profile,
             client=self.client, runner=self.runner)
@@ -428,11 +505,13 @@ class StudentMainWindow(QMainWindow):
             profile_provider=self._current_profile, standalone=True,
             client=self.client, runner=self.runner)
         self.about_page = AboutTab()
+        self.tabs.add_page(self.home_page, COPY["home.nav.home"])
         self.tabs.add_page(self.questionnaire_page, COPY["c.tab.questionnaire"])
         self.tabs.add_page(self.treehole_page, COPY["s.treehole.tab.title"])
         self.tabs.add_page(self.profile_page, COPY["c.tab.profile"])
         self.tabs.add_page(self.appointment_page, COPY["c.tab.appointment"])
-        self.tabs.add_page(self.about_page, COPY["c.tab.about"])
+        self.tabs.add_page(self.about_page, COPY["c.tab.about"], bottom=True)
+        self.tabs.set_settings_target(self.about_page)
 
         self.stack.addWidget(self.login_view)
         self.stack.addWidget(self.tabs)
@@ -516,6 +595,19 @@ class StudentMainWindow(QMainWindow):
 
         self.appointment_page.confirmed.connect(self._on_standalone_appointment_confirmed)
         self.tabs.currentChanged.connect(self._on_tab_changed)
+        self.home_page.navigate.connect(self._on_home_navigate)
+
+    def _on_home_navigate(self, key: str) -> None:
+        """首页四张功能卡片 → 切到对应功能页。"""
+        mapping = {
+            "questionnaire": self.questionnaire_page,
+            "treehole": self.treehole_page,
+            "appointment": self.appointment_page,
+            "profile": self.profile_page,
+        }
+        page = mapping.get(key)
+        if page is not None:
+            self.tabs.setCurrentWidget(page)
 
     # ---------------------------------------------------------------- 异步工具
 
@@ -636,6 +728,8 @@ class StudentMainWindow(QMainWindow):
             f"{profile.get('name', '')} · {profile.get('class_name') or ''}".strip(" ·")
         )
         self.show_main()
+        self.home_page.set_profile(profile)
+        self.tabs.set_user(profile)
         self._load_profile_dates()
         self._load_treehole_dates()
         return True
@@ -658,6 +752,8 @@ class StudentMainWindow(QMainWindow):
         self.treehole_page.set_entries([])
         self.treehole_page.set_dates([])
         self.profile_page.set_dates([])
+        self.home_page.set_profile({})
+        self.tabs.set_user({})
         # 清空登录框：登录成功后 `student_input` 会被填成 `profile.id`（`stu_` 前缀），
         # 若不清空，退出再登录会把 `stu_2023001` 当号次发给服务端 → 学生不存在，
         # 学生就像被锁在账号外、记录"消失"了。这里让下次登录从空白号次开始。
@@ -744,6 +840,8 @@ class StudentMainWindow(QMainWindow):
         # token 已由 `ApiClient.login_student()` 落盘（协议 §2.1）
         self.session_restored = False
         self.show_main()
+        self.home_page.set_profile(profile)
+        self.tabs.set_user(profile)
         self._load_profile_dates()
         self._load_treehole_dates()
         # 登录后立刻校一次引擎就绪：数据库正在恢复时，提交按钮当场就是禁用的

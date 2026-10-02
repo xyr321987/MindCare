@@ -25,6 +25,7 @@ from typing import Dict, Tuple
 __all__ = [
     "BG", "CARD", "FIELD", "INK", "INK_SOFT", "INK_FADE", "LINE", "MIST",
     "CORAL", "SPROUT", "PRIMARY_INK", "FOCUS_RING", "DANGER_SOFT",
+    "BRAND", "BRAND_SELECTED", "AUX_MIST", "AUX_APRICOT",
     "DUSK_TOP", "DUSK_BOTTOM",
     "SLOT_BLOCKED_BG", "SLOT_BLOCKED_LINE", "SLOT_BLOCKED_INK",
     "SLOT_TAKEN_BG", "SLOT_TAKEN_LINE", "SLOT_MINE_BG", "SLOT_MINE_LINE",
@@ -42,19 +43,25 @@ __all__ = [
 
 # --------------------------------------------------------------------------- 调色板
 
-BG = "#FAF7F2"            # 窗口底色（暖米白）
-CARD = "#FFFDF9"          # 卡片面（暖白，**替代纯白 #FFFFFF**）
+BG = "#F7F6F1"            # 页面主背景（温暖米白，见山规范）
+CARD = "#FFFFFF"          # 卡片背景（干净暖白）
 FIELD = "#F3EDE2"         # 输入/可编辑区底色（暖沙：用背景色差区分体系，替代硬边框）
 INK = "#3A3A38"           # **正文文字**（不用主色写正文）
 INK_SOFT = "#6E6A63"      # 次要文字
 INK_FADE = "#9A948A"      # 底层信息（危机热线等）的弱化字色
-LINE = "#EBE3D7"          # 分隔线（暖砂，进一步弱化“表格感”）
+LINE = "#E9E7DF"          # 分隔线 / 卡片边框（见山规范 1px 边框色）
 MIST = "#A8C5D6"          # 主色（雾蓝）：选中态填充、进度条、主按钮**底色**
 CORAL = "#F2B8A0"         # 辅助色（柔珊瑚）：P1 关注标记的**底色**，不是文字色
 SPROUT = "#B7D7B9"        # 平静 / 正向
 PRIMARY_INK = "#2F4A57"   # 雾蓝上的文字色（白字压在雾蓝上对比度不足）
 FOCUS_RING = "#7FA6BA"    # 焦点环（雾蓝加深，用于键盘可达样式）
 DANGER_SOFT = "#C9836B"   # 柔化的提示色（**不是刺眼红**，只用于错误文本，仍是深色字）
+
+# --- 见山品牌色（第一轮 UI 还原：低饱和墨绿 + 浅灰绿 + 浅雾蓝 + 暖杏）--------
+BRAND = "#355B4C"           # 品牌主色（低饱和度墨绿）
+BRAND_SELECTED = "#DCE9DF"  # 选中状态（浅灰绿）
+AUX_MIST = "#E5EEF2"        # 辅助色（浅雾蓝）
+AUX_APRICOT = "#F4E5D6"     # 辅助色（暖杏）
 
 #: 树洞「暮蓝」环境光渐变（自顶向下柔和暮色：传递夜间温暖的安全感）
 DUSK_TOP = "#E3ECF1"
@@ -72,12 +79,12 @@ SLOT_MINE_BG = "#DCEBE0"       # 我约的：嫩芽绿底（字用 INK -> 9.21:1
 SLOT_MINE_LINE = "#6E9A76"
 SLOT_PAST_BG = "#F2EEE6"       # 已经过去（禁用态，与 `QPushButton:disabled` 同款）
 
-# --- 学生端左侧导航（深色侧边栏，主题上独立于主调色板：内容区仍保持暖米色）--------
-NAV_BG = "#1A1A1A"          # 侧边导航底色（深灰黑）
-NAV_INACTIVE = "#A0A0A0"    # 未选中项文字/图标（浅灰）
-NAV_ACTIVE_BG = "#3A3A3A"   # 选中项背景（中灰圆角）
-NAV_ACTIVE_TEXT = "#FFFFFF" # 选中项文字（白）
-NAV_HOVER_BG = "#2A2A2A"    # 悬停背景
+# --- 学生端左侧导航（浅米白侧边栏；见山规范：品牌墨绿 + 浅灰绿选中态）--------
+NAV_BG = "#F3F1E9"          # 侧边导航底色（浅米白）
+NAV_INACTIVE = "#6E6A63"    # 未选中项文字（次要灰）
+NAV_ACTIVE_BG = "#DCE9DF"   # 选中项背景（浅灰绿圆角）
+NAV_ACTIVE_TEXT = "#355B4C" # 选中项文字（品牌墨绿）
+NAV_HOVER_BG = "#EAE7DD"    # 悬停背景（浅暖灰）
 
 # --- 情绪卡片（Q1）的色彩光晕 + 色温层 --------------------------------------
 # 三种情绪各自有独立的「光晕」底色 / 边界色（不是正文文字色，对比度仍由自检复算）。
@@ -95,6 +102,8 @@ PALETTE: Dict[str, str] = {
     "INK_FADE": INK_FADE, "LINE": LINE, "MIST": MIST, "CORAL": CORAL,
     "SPROUT": SPROUT, "PRIMARY_INK": PRIMARY_INK, "FOCUS_RING": FOCUS_RING,
     "DANGER_SOFT": DANGER_SOFT, "DUSK_TOP": DUSK_TOP, "DUSK_BOTTOM": DUSK_BOTTOM,
+    "BRAND": BRAND, "BRAND_SELECTED": BRAND_SELECTED,
+    "AUX_MIST": AUX_MIST, "AUX_APRICOT": AUX_APRICOT,
     "SLOT_BLOCKED_BG": SLOT_BLOCKED_BG, "SLOT_BLOCKED_LINE": SLOT_BLOCKED_LINE,
     "SLOT_BLOCKED_INK": SLOT_BLOCKED_INK, "SLOT_TAKEN_BG": SLOT_TAKEN_BG,
     "SLOT_TAKEN_LINE": SLOT_TAKEN_LINE, "SLOT_MINE_BG": SLOT_MINE_BG,
@@ -352,17 +361,21 @@ QTabBar::tab:selected {{
 }}
 QTabBar::tab:hover {{ color: {INK}; }}
 
-/* ===== 学生端左侧深色导航（SideNav：深色侧边栏 + 横排菜单）===== */
+/* ===== 学生端左侧导航（SideNav：浅米白侧边栏 + 品牌/菜单/底部三区）===== */
 QWidget#SideNavBar {{
     background: {NAV_BG};
-    min-width: 176px;
+    min-width: 220px;
+    max-width: 220px;
 }}
+QLabel#NavBrand {{ font-size: 24px; font-weight: 600; color: {BRAND}; }}
+QLabel#NavBrandSlogan {{ font-size: 12px; color: {INK_SOFT}; }}
+QLabel#NavSectionCaption {{ font-size: 12px; color: {INK_FADE}; }}
 QPushButton#NavItem {{
     background: transparent;
     color: {NAV_INACTIVE};
     padding: 12px 18px;
     border: none;
-    border-radius: 9px;
+    border-radius: 12px;
     min-height: {MIN_TAP}px;
     font-weight: 500;
     text-align: left;
@@ -376,6 +389,67 @@ QPushButton#NavItem:checked {{
     color: {NAV_ACTIVE_TEXT};
     font-weight: 600;
 }}
+QLabel#NavUserName {{ font-size: 14px; font-weight: 600; color: {INK}; }}
+QLabel#NavUserClass {{ font-size: 12px; color: {INK_SOFT}; }}
+QWidget#NavUserCard {{ background: transparent; }}
+QLabel#NavAvatar {{
+    background-color: {BRAND_SELECTED};
+    color: {BRAND};
+    border-radius: 18px;
+    font-weight: 600;
+    font-size: 15px;
+}}
+
+/* ===== 见山首页 ===== */
+QWidget#HomePage {{ background: {BG}; }}
+QWidget#HomeScroll, QWidget#HomeScrollContent {{ background: transparent; }}
+QLabel#HomeHello {{ font-size: 30px; font-weight: 600; color: {INK}; }}
+QLabel#HomeSubtitle {{ font-size: 14px; color: {INK_SOFT}; }}
+QLabel#HomeSectionTitle {{ font-size: 20px; font-weight: 600; color: {INK}; }}
+QFrame#HomeFeatureCard {{
+    background-color: {CARD};
+    border: 1px solid {LINE};
+    border-radius: 16px;
+}}
+QFrame#HomeFeatureCard:hover {{
+    border: 1px solid {BRAND_SELECTED};
+}}
+QLabel#HomeCardTitle {{ font-size: 18px; font-weight: 500; color: {INK}; }}
+QLabel#HomeCardDesc {{ font-size: 14px; color: {INK_SOFT}; }}
+QPushButton#HomeCardArrow {{
+    background-color: {BRAND};
+    color: #FFFFFF;
+    border: none;
+    border-radius: 17px;
+    min-width: 34px;
+    max-width: 34px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0;
+    font-size: 16px;
+}}
+QPushButton#HomeCardArrow:hover {{ background-color: #2E5044; }}
+QFrame#HomeNote {{
+    background-color: #FFFDF6;
+    border: 1px solid #EDE7D8;
+    border-radius: 16px;
+}}
+QLabel#HomeNoteTitle {{ font-size: 20px; font-weight: 600; color: {INK}; }}
+QLabel#HomeNoteText {{ font-size: 14px; color: {INK}; }}
+QLabel#HomeNoteSign {{ font-size: 13px; color: {INK_SOFT}; }}
+QFrame#HomeActivity {{
+    background-color: {CARD};
+    border: 1px solid {LINE};
+    border-radius: 16px;
+}}
+QFrame#HomeActivityRow {{
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid {LINE};
+}}
+QLabel#HomeActivityText {{ font-size: 14px; color: {INK}; }}
+QLabel#HomeActivityTime {{ font-size: 12px; color: {INK_FADE}; }}
+QLabel#HomeFooter {{ font-size: 13px; color: {INK_FADE}; }}
 
 /* ===== 列表 ===== */
 QListWidget, QListView, QScrollArea {{
