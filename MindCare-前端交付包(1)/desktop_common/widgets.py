@@ -70,12 +70,22 @@ BUTTON_ROLE_OBJECT = {
 
 def make_label(text: str = "", object_name: str = "Body",
                *, word_wrap: bool = True, parent: Optional[QWidget] = None) -> QLabel:
-    """统一标签工厂：文本由调用方从文案表取。"""
+    """统一标签工厂：文本由调用方从文案表取。
+
+    wordWrap 的 QLabel **必须**保留 heightForWidth 标志（2026-10-03 修复）：
+    直接 `setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)` 会用
+    新构造的 policy 覆盖 `setWordWrap(True)` 内部设置的 hfw 标志；hfw 丢失后
+    wordWrap 文本在布局中只按 sizeHint 快照分配高度（嵌套在卡片里时常退化为
+    单行高度，长文被截断）。布局拿到 hfw 才会按实际宽度调
+    `heightForWidth(width)` 精确计算换行高度。
+    """
     label = QLabel(text, parent)
     label.setObjectName(object_name)
     label.setWordWrap(word_wrap)
     label.setTextInteractionFlags(Qt.TextSelectableByMouse)
-    label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+    policy = QSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+    policy.setHeightForWidth(word_wrap)
+    label.setSizePolicy(policy)
     return label
 
 

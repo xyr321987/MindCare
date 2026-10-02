@@ -6,6 +6,13 @@
 * 请求体里**没有** `visibility` 字段（契约没有这个字段——树洞没有授权开关）；
   本模块的模块级常量 `VISIBILITY` 仅用于把"恒为私密"这件事写成可断言的代码事实；
 * 文案一律来自文案表（`s.treehole.*`），本文件不出现中文界面字面量。
+
+列表区架构（2026-10-03 修复文字截断）：
+旧实现 `QListWidget + item.setSizeHint(row.sizeHint())` 在条目 widget
+尚未被赋予列表宽度时就计算 sizeHint，正文（wordWrap 的 `QLabel`）按错误
+宽度换行、高度被低估，最终列表项高度不足、文字被裁剪。现改为与
+「我的档案」`ProfileTab` 一致的 `QScrollArea + QVBoxLayout`：布局管理器
+在真实宽度下逐条计算高度，窗口缩放时自动重排。
 """
 from __future__ import annotations
 
@@ -16,8 +23,6 @@ from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
     QLabel,
-    QListWidget,
-    QListWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -35,6 +40,7 @@ from desktop_common.widgets import (
     make_hint,
     make_primary_button,
     make_title,
+    wrap_scroll,
 )
 
 __all__ = ["TreeholeTab", "TreeholeEntryRow", "VISIBILITY", "MOODTAG_COPY"]
@@ -91,6 +97,21 @@ class TreeholeEntryRow(Card):
         if content:
             self.add(make_body(content))
 
+    def resizeEvent(self, event) -> None:  # noqa: N802
+        """宽度变化后按新宽度锁定最小高度（防 wordWrap 正文被压成单行）。
+
+        wordWrap 的 `QLabel` 其 `minimumSizeHint` 只有**单行**高度：布局
+        纵向空间不足时正文会被压回单行、滚动区也不给足纵向空间 → 截断。
+        这里每次 resize 都用 `totalHeightForWidth(width)` 算出该宽度下
+        整卡内容（时间行 + 徽标 + 换行正文）真实需要的高度，显式设为
+        最小高度；滚动区据此出现纵向滚动条，而不是压缩内容。
+        """
+        super().resizeEvent(event)
+        lay = self.layout()
+        if lay is None or self.width() <= 0:
+            return
+        self.setMinimumHeight(lay.totalHeightForWidth(self.width()))
+
     @property
     def mood_badge_text(self) -> str:
         """情绪卡片文本（自检按此断言，不依赖 Qt 渲染）；无标记返回空串。"""
@@ -137,12 +158,22 @@ class TreeholeTab(QWidget):
         self.day_picker.setFocusPolicy(Qt.StrongFocus)
         self.day_picker.currentTextChanged.connect(self._on_day_changed)
         list_card.add(self.day_picker)
-        self.list_widget = QListWidget()
-        self.list_widget.setObjectName("TreeholeList")
-        self.list_widget.setFocusPolicy(Qt.StrongFocus)
-        list_card.add(self.list_widget, 1)
+
+        # 条目列表：QScrollArea + 垂直布局（与 ProfileTab 同架构，见模块 docstring）。
+        # `wrap_scroll` 的 `widgetResizable=True` 让 rows_host 始终与可视区同宽，
+        # 布局在该宽度下逐条计算 wordWrap 正文高度，杜绝 setSizeHint 快照截断。
+        self.rows_host = QWidget()
+        self.rows_host.setObjectName("TreeholeRowsHost")
+        self.list_layout = QVBoxLayout(self.rows_host)
+        self.list_layout.setContentsMargins(0, 0, 0, 0)
+        self.list_layout.setSpacing(12)
         self.empty_label = make_hint(COPY["s.treehole.list.empty"])
-        list_card.add(self.empty_label)
+        self.list_layout.addWidget(self.empty_label)
+        self.list_layout.addStretch(1)
+        self.list_scroll = wrap_scroll(self.rows_host)
+        self.list_scroll.setObjectName("TreeholeScroll")
+        list_card.add(self.list_scroll, 1)
+
         self.new_button = make_primary_button(COPY["s.treehole.list.new"])
         self.new_button.clicked.connect(self.open_editor)
         list_card.add(self.new_button)
@@ -233,7 +264,7 @@ class TreeholeTab(QWidget):
         return self.day_picker.currentText()
 
     def set_entries(self, entries: List[dict]) -> None:
-        self.list_widget.clear()
+        """渲染某天的条目（逐条插到布局末尾 stretch 之前，最新在后）。"""
         self._clear_rows()
         if not entries:
             self.empty_label.setVisible(True)
@@ -241,16 +272,16 @@ class TreeholeTab(QWidget):
         self.empty_label.setVisible(False)
         for entry in entries:
             row = TreeholeEntryRow(entry)
-            item = QListWidgetItem()
-            item.setData(Qt.UserRole, entry.get("entry_id"))
-            item.setSizeHint(row.sizeHint())
-            self.list_widget.addItem(item)
-            self.list_widget.setItemWidget(item, row)
+            # 布局末尾固定挂着一个 stretch：新行插在它前面；隐藏的
+            # empty_label 仍占布局位但不显示、不占空间。
+            self.list_layout.insertWidget(self.list_layout.count() - 1, row)
             self._rows.append(row)
 
     def _clear_rows(self) -> None:
-        """立即摘除旧条目卡片控件（`setItemWidget` 的控件不随 `clear()` 自动销毁）。"""
+        """立即摘除旧条目卡片控件（`removeWidget` 摘布局 + `deleteLater` 回收；
+        stretch 与空状态标签是布局骨架，不在清理范围）。"""
         for row in self._rows:
+            self.list_layout.removeWidget(row)
             row.setParent(None)
             row.deleteLater()
         self._rows.clear()
