@@ -198,6 +198,68 @@ def main() -> int:
     except engine.ApiError as e:
         ok(e.code in (1002, 2002), f"教师读树洞被拒（{e.code}）")
 
+    # ============ 调度系统升级（咨询室/冲突/改期/取消/爽约/批量/统计/日志）============
+    # 20 咨询室
+    rooms = call("POST", "/db/read", token=tea_token,
+                 body={"resource": "rooms.list", "params": {}})
+    ok(any(r["name"] == "咨询室A" for r in rooms["items"]), "默认咨询室A已预置")
+    room_b = call("POST", "/db/write", token=tea_token,
+                  body={"action": "rooms.create", "payload": {"name": "咨询室B"}})
+    ok(bool(room_b.get("room_id")), "新建咨询室B")
+
+    # 21 冲突检测：同咨询室同时段
+    sched_a = call("POST", "/db/write", token=tea_token, body={"action": "appointments.schedule",
+                   "payload": {"student_id": "stu_2023001", "year": "2026", "month": "11", "day": "2",
+                               "time": "10:00", "room_id": "rm_default", "teacher_id": "tch_T001"}})
+    ok(sched_a.get("status") == "scheduled", "预约A（咨询室A 10:00）成功")
+    expect_err("POST", "/db/write",
+               {"action": "appointments.schedule",
+                "payload": {"student_id": "stu_2023002", "year": "2026", "month": "11", "day": "2",
+                            "time": "10:00", "room_id": "rm_default", "teacher_id": "tch_T001"}},
+               tea_token, 2001, "同咨询室同时段冲突被拒")
+
+    # 22 改期（留痕）
+    resch = call("POST", "/db/write", token=tea_token, body={"action": "appointments.reschedule",
+                 "payload": {"appointment_id": sched_a["appointment_id"], "year": "2026", "month": "11",
+                             "day": "3", "time": "14:00", "room_id": "rm_default",
+                             "note": "学生请假改期"}})
+    ok(resch.get("status") == "scheduled"
+       and resch.get("rescheduled_from") == sched_a["appointment_id"], "改期成功并留痕")
+
+    # 23 取消（记录原因）
+    can = call("POST", "/db/write", token=tea_token, body={"action": "appointments.cancel",
+               "payload": {"appointment_id": resch["appointment_id"], "reason": "学生临时有事"}})
+    ok(can.get("status") == "cancelled" and can.get("cancel_reason") == "学生临时有事",
+       "取消并记录原因")
+
+    # 24 爽约
+    sched_b = call("POST", "/db/write", token=tea_token, body={"action": "appointments.schedule",
+                   "payload": {"student_id": "stu_2023002", "year": "2026", "month": "11", "day": "5",
+                               "time": "09:00", "room_id": room_b["room_id"]}})
+    noshow = call("POST", "/db/write", token=tea_token, body={"action": "appointments.no_show",
+                  "payload": {"appointment_id": sched_b["appointment_id"], "note": "未到未请假"}})
+    ok(noshow.get("status") == "no_show", "爽约标记")
+
+    # 25 批量关闭时段
+    batch = call("POST", "/db/write", token=tea_token, body={"action": "blocks.batch_set",
+                 "payload": {"items": [{"year": "2026", "month": "11", "day": "6", "period": "3"},
+                                       {"year": "2026", "month": "11", "day": "6", "period": "4"}],
+                             "active": True, "reason": "教师会议"}})
+    ok(len(batch.get("slots") or []) == 2, "批量关闭 2 个时段")
+
+    # 26 统计
+    stats = call("POST", "/db/read", token=tea_token, body={"resource": "stats.appointments",
+                 "params": {"start": "2026-11-01", "end": "2026-11-30"}})
+    ok(isinstance(stats.get("total"), int) and isinstance(stats.get("completion_rate"), (int, float)),
+       "预约统计返回总量与完成率")
+
+    # 27 操作日志
+    events = call("POST", "/db/read", token=tea_token, body={"resource": "appointments.events",
+                 "params": {"appointment_id": resch["appointment_id"]}})
+    acts = [e["action"] for e in events.get("items") or []]
+    ok("scheduled" in acts and "rescheduled" in acts and "cancelled" in acts,
+       f"操作日志含 scheduled/rescheduled/cancelled（实际 {acts}）")
+
     print()
     if fails:
         print(f"自检未通过：{len(fails)} 项")

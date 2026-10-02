@@ -81,6 +81,8 @@ CREATE TABLE IF NOT EXISTS appointments (
     apt_id             TEXT PRIMARY KEY,
     student_id         TEXT NOT NULL REFERENCES students(student_id),
     ticket_id          TEXT REFERENCES tickets(ticket_id),
+    teacher_id         TEXT REFERENCES teachers(teacher_id),
+    room_id            TEXT REFERENCES rooms(room_id),
     name               TEXT,
     class_name         TEXT,
     year               TEXT,
@@ -96,8 +98,25 @@ CREATE TABLE IF NOT EXISTS appointments (
     share_treehole     INTEGER NOT NULL DEFAULT 0,
     status             TEXT NOT NULL DEFAULT 'scheduled',
     note               TEXT,
+    cancel_reason      TEXT,
+    rescheduled_from   TEXT,
+    no_show_note       TEXT,
     created_ts         TEXT NOT NULL,
     updated_ts         TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS rooms (
+    room_id    TEXT PRIMARY KEY,
+    name       TEXT NOT NULL,
+    active     INTEGER NOT NULL DEFAULT 1,
+    created_ts TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS appointment_events (
+    event_id        TEXT PRIMARY KEY,
+    appointment_id  TEXT NOT NULL REFERENCES appointments(apt_id),
+    actor           TEXT NOT NULL,
+    action          TEXT NOT NULL,
+    note            TEXT,
+    created_ts      TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS blocks (
     blk_id     TEXT PRIMARY KEY,
@@ -187,6 +206,7 @@ class Database:
         with self._lock:
             self._conn.executescript(SCHEMA)
             self._conn.commit()
+        self._migrate()
         self._seed()
 
     # ------------------------------------------------------------------ 基础
@@ -226,6 +246,16 @@ class Database:
                 self._conn.rollback()
                 raise
 
+    # ------------------------------------------------------------------ 迁移
+    def _migrate(self) -> None:
+        """为旧库补预约调度升级新增的列（幂等）。"""
+        cols = {r["name"] for r in self.query("PRAGMA table_info(appointments)")}
+        for name in ("teacher_id", "room_id", "cancel_reason",
+                     "rescheduled_from", "no_show_note"):
+            if name not in cols:
+                self.execute(f"ALTER TABLE appointments ADD COLUMN {name} TEXT")
+        self.commit()
+
     # ------------------------------------------------------------------ 种子
     def _seed(self) -> None:
         if not self.query_one("SELECT 1 FROM teachers WHERE teacher_id=?", (PRESET_TEACHER_ID,)):
@@ -237,6 +267,11 @@ class Database:
             self.execute(
                 "INSERT INTO teacher_credentials(teacher_id, password_hash, salt) VALUES(?,?,?)",
                 (PRESET_TEACHER_ID, digest, salt),
+            )
+        if not self.query_one("SELECT 1 FROM rooms"):
+            self.execute(
+                "INSERT INTO rooms(room_id, name, active, created_ts) VALUES(?,?,?,?)",
+                ("rm_default", "咨询室A", 1, sched.now_iso()),
             )
         for scene, text, treehole in TIPS_SEED:
             self.execute(

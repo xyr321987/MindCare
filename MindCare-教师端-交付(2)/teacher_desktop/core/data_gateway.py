@@ -34,15 +34,25 @@ RESOURCE_REGISTRY: Dict[str, str] = {
     "replies.list":           "全部回复条目（updated_at 倒序，含停用）",
     "export.classes":         "可选班级下拉列表",
     "export.rows":            "跨班问卷汇总行（零正文，仅枚举/标记列）",
+    "rooms.list":             "全部咨询室（含启用状态）",
+    "appointments.events":    "某预约的操作日志（取消/改期/爽约等留痕）",
+    "stats.appointments":     "按日期区间统计预约量/完成率/教师/咨询室/状态",
 }
 
 # ---------------------------------------------------------------------------
 # 动作注册表（write）—— key 即协议中的 action 字符串
 # ---------------------------------------------------------------------------
 ACTION_REGISTRY: Dict[str, str] = {
-    "appointments.schedule":  "老师选定预约时间，写入预约库",
+    "appointments.schedule":  "老师选定预约时间，写入预约库（含教师/咨询室/冲突检测）",
     "appointments.complete":  "标记预约已完成（约谈结束）",
+    "appointments.reschedule": "改期预约（教师/咨询室/时间），检测冲突并留痕",
+    "appointments.cancel":    "取消预约（记录原因，工单回退 pending）",
+    "appointments.no_show":   "标记学生爽约（记录备注）",
     "blocks.set":             "设定/取消某格不可预约",
+    "blocks.batch_set":       "批量设定/关闭多个时段",
+    "rooms.create":           "新建咨询室",
+    "rooms.update":           "编辑咨询室（名称/启用）",
+    "rooms.delete":           "删除咨询室",
     "warnings.dismiss":       "老师约谈后消除预警，留痕",
     "replies.create":         "新建回复条目",
     "replies.update":         "编辑回复条目（正文/标签/启用）",

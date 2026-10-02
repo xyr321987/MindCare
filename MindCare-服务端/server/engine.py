@@ -722,9 +722,14 @@ def _teacher_appointment(db: Database, a: dict, today: str) -> dict:
         "student_name": a["name"],
         "class_name": a["class_name"],
         "ticket_id": a["ticket_id"],
+        "teacher_id": a["teacher_id"],
+        "room_id": a["room_id"],
         "scheduled_at": _iso_from_appt(a),
         "status": a["status"],
         "note": a["note"],
+        "cancel_reason": a["cancel_reason"],
+        "rescheduled_from": a["rescheduled_from"],
+        "no_show_note": a["no_show_note"],
         "created_at": a["created_ts"],
         "help_text_preview": "发起了求助" if a["ticket_id"] else "",
         "questionnaire": None,
@@ -752,6 +757,56 @@ def _reply_item(r: dict) -> dict:
     except (ValueError, TypeError):
         d["scenes"] = []
     return d
+
+
+def _conflict(db: Database, slot: str, date: str, period: str,
+              teacher_id: Optional[str], room_id: Optional[str],
+              exclude_apt_id: Optional[str] = None) -> Optional[str]:
+    """预约冲突检测：同格 / 同教师同时段 / 同咨询室同时段，返回冲突文案或 None。"""
+    def _hit(sql: str, args: list) -> bool:
+        return db.query_one(sql, args) is not None
+
+    # 1. 同格冲突（slot 唯一）
+    q = "SELECT 1 FROM appointments WHERE slot=? AND status='scheduled'"
+    args: list = [slot]
+    if exclude_apt_id:
+        q += " AND apt_id != ?"
+        args.append(exclude_apt_id)
+    if _hit(q, args):
+        return "该时段已被预约"
+
+    # 2. 教师同时段冲突
+    if teacher_id:
+        q = ("SELECT 1 FROM appointments WHERE teacher_id=? AND date=? AND period=?"
+             " AND status='scheduled'")
+        args = [teacher_id, date, str(period)]
+        if exclude_apt_id:
+            q += " AND apt_id != ?"
+            args.append(exclude_apt_id)
+        if _hit(q, args):
+            return "该教师此时段已有预约"
+
+    # 3. 咨询室同时段冲突
+    if room_id:
+        q = ("SELECT 1 FROM appointments WHERE room_id=? AND date=? AND period=?"
+             " AND status='scheduled'")
+        args = [room_id, date, str(period)]
+        if exclude_apt_id:
+            q += " AND apt_id != ?"
+            args.append(exclude_apt_id)
+        if _hit(q, args):
+            return "该咨询室此时段已被占用"
+    return None
+
+
+def _log_event(db: Database, appointment_id: str, actor: str, action: str,
+               note: Optional[str] = None) -> None:
+    """追加预约操作日志（不 commit，由调用方统一提交）。"""
+    db.execute(
+        "INSERT INTO appointment_events(event_id, appointment_id, actor, action, note, created_ts)"
+        " VALUES(?,?,?,?,?,?)",
+        (new_id("evt_"), appointment_id, actor, action, note, sched.now_iso()),
+    )
 
 
 def db_read(db: Database, resource: str, params: dict) -> Any:
@@ -813,6 +868,43 @@ def db_read(db: Database, resource: str, params: dict) -> Any:
         sql += " ORDER BY q.date, s.class_name, q.ts"
         rows = db.query(sql, args)
         return {"items": [_boolify(dict(r)) for r in rows]}
+    if resource == "rooms.list":
+        return {"items": [dict(r) for r in db.query("SELECT * FROM rooms ORDER BY created_ts")]}
+    if resource == "appointments.events":
+        apt_id = params.get("appointment_id")
+        if apt_id:
+            rows = db.query(
+                "SELECT * FROM appointment_events WHERE appointment_id=? ORDER BY created_ts",
+                (apt_id,))
+        else:
+            rows = db.query("SELECT * FROM appointment_events ORDER BY created_ts DESC LIMIT 200")
+        return {"items": [dict(r) for r in rows]}
+    if resource == "stats.appointments":
+        start = params.get("start") or today
+        end = params.get("end") or today
+        rows = db.query(
+            "SELECT date, teacher_id, room_id, status, COUNT(*) AS cnt FROM appointments"
+            " WHERE date >= ? AND date <= ? GROUP BY date, teacher_id, room_id, status",
+            (start, end),
+        )
+        total = sum(r["cnt"] for r in rows)
+        done = sum(r["cnt"] for r in rows if r["status"] == "done")
+        by_teacher: Dict[str, int] = {}
+        by_room: Dict[str, int] = {}
+        by_status: Dict[str, int] = {}
+        for r in rows:
+            t = r["teacher_id"] or "(未分配)"
+            m = r["room_id"] or "(未分配)"
+            by_teacher[t] = by_teacher.get(t, 0) + r["cnt"]
+            by_room[m] = by_room.get(m, 0) + r["cnt"]
+            by_status[r["status"]] = by_status.get(r["status"], 0) + r["cnt"]
+        return {
+            "start": start, "end": end,
+            "total": total, "done": done,
+            "completion_rate": round(done / total, 4) if total else 0,
+            "by_teacher": by_teacher, "by_room": by_room, "by_status": by_status,
+            "rows": [dict(r) for r in rows],
+        }
     raise _err(2001, f"未注册的资源: {resource}", "resource")
 
 
@@ -825,6 +917,8 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         student_id = str(payload.get("student_id") or "")
         st = _require_student(db, student_id)
         ticket_id = payload.get("ticket_id")
+        teacher_id = payload.get("teacher_id") or None
+        room_id = payload.get("room_id") or None
         if payload.get("scheduled_at"):
             year, month, day, time_text = _parse_scheduled_at(payload.get("scheduled_at"))
         else:
@@ -832,28 +926,146 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
             time_text = str(payload.get("time") or "")
         period = _coerce_period(year, month, day, time_text, None)
         slot = sched.slot_id(int(year), int(month), int(day), period)
-        clash = db.query_one("SELECT 1 FROM appointments WHERE slot=? AND status='scheduled'", (slot,))
-        if clash:
-            raise _err(2001, "该时段已被预约", "slot")
+        slot_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+        conflict = _conflict(db, slot, slot_date, str(period), teacher_id, room_id)
+        if conflict:
+            raise _err(2001, conflict, "slot")
         now = sched.now_iso()
         apt_id = new_id("apt_")
-        slot_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
         weekday = sched.weekday_from_date(int(year), int(month), int(day))
         db.execute(
             "INSERT INTO appointments"
-            "(apt_id, student_id, ticket_id, name, class_name, year, month, day, period, weekday,"
-            " time_start, time_end, slot, date, share_questionnaire, share_treehole, status, note, created_ts, updated_ts)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (apt_id, student_id, ticket_id, st["name"], st["class_name"],
+            "(apt_id, student_id, ticket_id, teacher_id, room_id, name, class_name,"
+            " year, month, day, period, weekday, time_start, time_end, slot, date,"
+            " share_questionnaire, share_treehole, status, note, created_ts, updated_ts)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (apt_id, student_id, ticket_id, teacher_id, room_id, st["name"], st["class_name"],
              str(year), str(month), str(day), str(period), str(weekday),
              sched.period_start(period), sched.period_end(period), slot, slot_date,
              1, 0, "scheduled", payload.get("note"), now, now),
         )
         if ticket_id:
             db.execute("UPDATE tickets SET status='accepted', updated_ts=? WHERE ticket_id=?", (now, ticket_id))
+        _log_event(db, apt_id, "teacher", "scheduled", payload.get("note"))
         db.commit()
         a = db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,))
         return _teacher_appointment(db, a, sched.today_str())
+    if action == "appointments.reschedule":
+        apt_id = str(payload.get("appointment_id") or "")
+        a = db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,))
+        if not a:
+            raise _err(2002, "预约不存在", "appointment_id")
+        if payload.get("scheduled_at"):
+            year, month, day, time_text = _parse_scheduled_at(payload.get("scheduled_at"))
+        else:
+            year, month, day = payload.get("year"), payload.get("month"), payload.get("day")
+            time_text = str(payload.get("time") or "")
+        period = _coerce_period(year, month, day, time_text, None)
+        slot = sched.slot_id(int(year), int(month), int(day), period)
+        slot_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+        teacher_id = payload.get("teacher_id", a["teacher_id"]) or None
+        room_id = payload.get("room_id", a["room_id"]) or None
+        conflict = _conflict(db, slot, slot_date, str(period), teacher_id, room_id,
+                             exclude_apt_id=apt_id)
+        if conflict:
+            raise _err(2001, conflict, "slot")
+        now = sched.now_iso()
+        weekday = sched.weekday_from_date(int(year), int(month), int(day))
+        db.execute(
+            "UPDATE appointments SET teacher_id=?, room_id=?, year=?, month=?, day=?,"
+            " period=?, weekday=?, time_start=?, time_end=?, slot=?, date=?,"
+            " rescheduled_from=?, updated_ts=? WHERE apt_id=?",
+            (teacher_id, room_id, str(year), str(month), str(day), str(period), str(weekday),
+             sched.period_start(period), sched.period_end(period), slot, slot_date,
+             apt_id, now, apt_id),
+        )
+        _log_event(db, apt_id, "teacher", "rescheduled", payload.get("note"))
+        db.commit()
+        return _teacher_appointment(
+            db, db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,)),
+            sched.today_str())
+    if action == "appointments.cancel":
+        apt_id = str(payload.get("appointment_id") or "")
+        a = db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,))
+        if not a:
+            raise _err(2002, "预约不存在", "appointment_id")
+        reason = str(payload.get("reason") or "")
+        now = sched.now_iso()
+        db.execute("UPDATE appointments SET status='cancelled', cancel_reason=?, updated_ts=? WHERE apt_id=?",
+                   (reason, now, apt_id))
+        if a["ticket_id"]:
+            db.execute("UPDATE tickets SET status='pending', updated_ts=? WHERE ticket_id=?", (now, a["ticket_id"]))
+        _log_event(db, apt_id, "teacher", "cancelled", reason)
+        db.commit()
+        return _teacher_appointment(
+            db, db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,)),
+            sched.today_str())
+    if action == "appointments.no_show":
+        apt_id = str(payload.get("appointment_id") or "")
+        a = db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,))
+        if not a:
+            raise _err(2002, "预约不存在", "appointment_id")
+        note = str(payload.get("note") or "")
+        now = sched.now_iso()
+        db.execute("UPDATE appointments SET status='no_show', no_show_note=?, updated_ts=? WHERE apt_id=?",
+                   (note, now, apt_id))
+        _log_event(db, apt_id, "teacher", "no_show", note)
+        db.commit()
+        return _teacher_appointment(
+            db, db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,)),
+            sched.today_str())
+    if action == "rooms.create":
+        name = str(payload.get("name") or "").strip()
+        if not name:
+            raise _err(2001, "字段 name 校验失败：必须是非空字符串", "name")
+        room_id = new_id("rm_")
+        db.execute("INSERT INTO rooms(room_id, name, active, created_ts) VALUES(?,?,1,?)",
+                   (room_id, name, sched.now_iso()))
+        db.commit()
+        return dict(db.query_one("SELECT * FROM rooms WHERE room_id=?", (room_id,)))
+    if action == "rooms.update":
+        room_id = str(payload.get("room_id") or "")
+        r = db.query_one("SELECT * FROM rooms WHERE room_id=?", (room_id,))
+        if not r:
+            raise _err(2002, "咨询室不存在", "room_id")
+        if "name" in payload and payload["name"] is not None:
+            db.execute("UPDATE rooms SET name=? WHERE room_id=?",
+                       (str(payload["name"]).strip(), room_id))
+        if "active" in payload and payload["active"] is not None:
+            db.execute("UPDATE rooms SET active=? WHERE room_id=?",
+                       (int(bool(payload["active"])), room_id))
+        db.commit()
+        return dict(db.query_one("SELECT * FROM rooms WHERE room_id=?", (room_id,)))
+    if action == "rooms.delete":
+        room_id = str(payload.get("room_id") or "")
+        db.execute("DELETE FROM rooms WHERE room_id=?", (room_id,))
+        db.commit()
+        return {"room_id": room_id}
+    if action == "blocks.batch_set":
+        items = list(payload.get("items") or [])
+        active = bool(payload.get("active", True))
+        reason = payload.get("reason")
+        now = sched.now_iso()
+        slots = []
+        for it in items:
+            try:
+                slot = sched.slot_id(int(it["year"]), int(it["month"]),
+                                     int(it["day"]), int(it["period"]))
+            except (KeyError, TypeError, ValueError):
+                continue
+            existing = db.query_one("SELECT * FROM blocks WHERE slot=?", (slot,))
+            if existing:
+                db.execute("UPDATE blocks SET active=?, reason=?, operator=?, created_ts=? WHERE slot=?",
+                           (int(active), reason, "teacher", now, slot))
+            else:
+                db.execute(
+                    "INSERT INTO blocks(blk_id, slot, year, month, day, period, active, reason, operator, created_ts)"
+                    " VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    (new_id("blk_"), slot, str(it["year"]), str(it["month"]), str(it["day"]),
+                     str(it["period"]), int(active), reason, "teacher", now))
+            slots.append(slot)
+        db.commit()
+        return {"slots": slots}
     if action == "appointments.complete":
         apt_id = str(payload.get("appointment_id") or "")
         a = db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,))
@@ -863,6 +1075,7 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         db.execute("UPDATE appointments SET status='done', updated_ts=? WHERE apt_id=?", (now, apt_id))
         if a["ticket_id"]:
             db.execute("UPDATE tickets SET status='done', updated_ts=? WHERE ticket_id=?", (now, a["ticket_id"]))
+        _log_event(db, apt_id, "teacher", "completed")
         db.commit()
         a2 = db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,))
         return _teacher_appointment(db, a2, sched.today_str())
@@ -948,9 +1161,12 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
 RESOURCE_REGISTRY = (
     "appointments.pending", "appointments.by_date", "blocks.list",
     "warnings.list", "replies.list", "export.classes", "export.rows",
+    "rooms.list", "appointments.events", "stats.appointments",
 )
 ACTION_REGISTRY = (
     "appointments.schedule", "appointments.complete", "blocks.set",
     "warnings.dismiss", "replies.create", "replies.update", "replies.delete",
     "students.set_history", "students.reset_password",
+    "appointments.reschedule", "appointments.cancel", "appointments.no_show",
+    "rooms.create", "rooms.update", "rooms.delete", "blocks.batch_set",
 )
