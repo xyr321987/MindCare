@@ -928,6 +928,7 @@ class StudentMainWindow(QMainWindow):
             "month": str(appointment.get("month") or ""),
             "day": str(appointment.get("day") or ""),
             "time": str(appointment.get("time") or ""),
+            "teacher_id": appointment.get("teacher_id"),
             "share_questionnaire": bool(appointment.get("share_questionnaire", False)),
             "share_treehole": bool(appointment.get("share_treehole", False)),
         }

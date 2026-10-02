@@ -995,8 +995,9 @@ def check_ui(app: QtWidgets.QApplication,
     _body_2 = window._appointment_body(_appt_payload)   # 同一份载荷反复组包 → apt_id 复用
     REPORT.check("「预约确认」→ 组装 POST /appointments 请求体（幂等 apt_ + 字段齐全 + 复用）",
                  set(_body_1) == {"apt_id", "year", "month", "day", "time",
-                                  "share_questionnaire", "share_treehole"}
+                                  "teacher_id", "share_questionnaire", "share_treehole"}
                  and str(_body_1["apt_id"]).startswith("apt_")
+                 and _body_1["teacher_id"] is None
                  and _body_1["share_questionnaire"] is True
                  and _body_1["share_treehole"] is False
                  and _body_1["time"] == "15:00"

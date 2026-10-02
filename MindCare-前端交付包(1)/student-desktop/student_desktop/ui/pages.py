@@ -725,6 +725,9 @@ class AppointmentPage(_FlowPage):
         #: `None` = 本地模式。两者对外的 `start/stop/changed/change_count/force_refresh`
         #: 接口一致，本页只面向 `self._sync` 编程。
         self._remote: Optional[RemoteSchedule] = None
+        #: 查询「可预约老师」用的 HTTP client/runner（本地模式为 None → 下拉只显示不指定）
+        self._client = client
+        self._runner = runner
 
         # ⚠️ 这一页的内容（预约人信息 + 8×7 课表 + 已选 + 分享勾选）比一屏高。
         #    全部塞进 `self.body` 时课表会被压扁（实测：整张网格被压到只剩年份下拉）。
@@ -772,6 +775,18 @@ class AppointmentPage(_FlowPage):
         self.selected_label.setObjectName("AppointmentSelected")
         inner.addWidget(self.selected_label)
         inner.addWidget(make_hint(COPY["s.appointment.hint.grid"]))
+
+        # --- 选择预约老师（可选，下拉框）------------------------------------
+        inner.addWidget(make_body(COPY["s.appointment.teacher.title"]))
+        self.teacher_combo = QComboBox()
+        self.teacher_combo.setObjectName("AppointmentTeacherCombo")
+        self.teacher_combo.setFocusPolicy(Qt.StrongFocus)
+        self.teacher_combo.addItem(COPY["s.appointment.teacher.none"], None)
+        inner.addWidget(self.teacher_combo)
+        self.teacher_hint = make_hint("")
+        self.teacher_hint.setObjectName("AppointmentTeacherHint")
+        self.teacher_hint.setVisible(False)
+        inner.addWidget(self.teacher_hint)
 
         #: 独立标签页的「预约成功」提示（问卷流程里无此提示，提交后即跳走）
         self._success_label = make_hint("")
@@ -912,6 +927,45 @@ class AppointmentPage(_FlowPage):
         self.set_error("")
         self.notify_saved("")
         self._render_selected()
+        self._refresh_teachers()
+
+    def _refresh_teachers(self) -> None:
+        """选中格子后拉取该时段「可预约老师」，填充下拉框（本地模式/未选则不拉）。"""
+        if self._client is None or self._runner is None:
+            return
+        day = self.selected_date()
+        period = self.selected_period()
+        if day is None or period is None:
+            return
+        year, month, day_no = day
+        self.teacher_combo.blockSignals(True)
+        self.teacher_combo.clear()
+        self.teacher_combo.addItem(COPY["s.appointment.teacher.none"], None)
+        self.teacher_combo.blockSignals(False)
+        self.teacher_hint.setText(COPY["s.appointment.teacher.loading"])
+        self.teacher_hint.setVisible(True)
+        self._runner.submit(
+            self._client.available_teachers, year, month, day_no, period,
+            done=self._on_teachers_loaded, failed=self._on_teachers_failed)
+
+    def _on_teachers_loaded(self, data: Any) -> None:
+        available = [(it.get("teacher_id"), it.get("name"))
+                     for it in (data or {}).get("items", []) if it.get("available")]
+        self.teacher_combo.blockSignals(True)
+        self.teacher_combo.clear()
+        self.teacher_combo.addItem(COPY["s.appointment.teacher.none"], None)
+        for tid, name in available:
+            self.teacher_combo.addItem(str(name), str(tid))
+        self.teacher_combo.blockSignals(False)
+        if not available:
+            self.teacher_hint.setText(COPY["s.appointment.teacher.empty"])
+            self.teacher_hint.setVisible(True)
+        else:
+            self.teacher_hint.setVisible(False)
+
+    def _on_teachers_failed(self, _error: Any) -> None:
+        # 查询失败不弹错：下拉保持「不指定老师」，学生仍可正常预约
+        self.teacher_hint.setVisible(False)
 
     def _render_selected(self) -> None:
         """刷新"已选："那一行（选中格里那个格子的文字也随之更新）。"""
@@ -964,6 +1018,7 @@ class AppointmentPage(_FlowPage):
             "time": schedule_mod.period_start(period),
             "time_start": schedule_mod.period_start(period),
             "time_end": schedule_mod.period_end(period),
+            "teacher_id": self.teacher_combo.currentData(),
             "share_questionnaire": self.share_questionnaire.isChecked(),
             "share_treehole": self.share_treehole.isChecked(),
         }
@@ -1031,6 +1086,11 @@ class AppointmentPage(_FlowPage):
         self._selected = None
         self.share_questionnaire.setChecked(False)
         self.share_treehole.setChecked(False)
+        self.teacher_combo.blockSignals(True)
+        self.teacher_combo.clear()
+        self.teacher_combo.addItem(COPY["s.appointment.teacher.none"], None)
+        self.teacher_combo.blockSignals(False)
+        self.teacher_hint.setVisible(False)
         self.selected_label.setText(COPY["s.appointment.selected.none"])
         self.board.clear_selection()
         today = date.today()

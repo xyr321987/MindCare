@@ -365,6 +365,35 @@ def main() -> int:
     leaked = [t for t in forbidden if t in engine_src]
     ok(not leaked, f"教师分支隔离：engine.py 不直接操作教师表（命中 {leaked or '无'}）")
 
+    # 36 学生可预约老师（free-busy）
+    av = call("GET", "/appointments/available_teachers",
+              query={"year": "2027", "month": "03", "day": "10", "period": "2"}, token=stu_token)
+    ok(any(t["teacher_id"] == "tch_T001" and t["available"] for t in av["items"]),
+       "空闲时段返回可预约老师（含 tch_T001）")
+
+    # 37 学生带 teacher_id 预约 + 同老师同时段第二个学生被拒（双订）
+    apt_t = call("POST", "/appointments", token=stu_token,
+                 body={"apt_id": "apt_tch", "year": "2027", "month": "03", "day": "10",
+                       "time": "08:50", "teacher_id": "tch_T001",
+                       "share_questionnaire": False, "share_treehole": False})
+    ok(apt_t.get("apt_id") == "apt_tch", "学生带 teacher_id 预约成功")
+    row_t = db.query_one("SELECT teacher_id FROM appointments WHERE apt_id='apt_tch'")
+    ok(row_t is not None and row_t["teacher_id"] == "tch_T001", "预约落库带 teacher_id")
+    expect_err("POST", "/appointments",
+               {"apt_id": "apt_tch2", "year": "2027", "month": "03", "day": "10",
+                "time": "08:50", "teacher_id": "tch_T001",
+                "share_questionnaire": False, "share_treehole": False},
+               b_token, 2001, "同老师同时段第二个学生被拒（双订）")
+
+    # 38 停诊的老师 → available_teachers 判为不可约
+    call("POST", "/db/write", token=tea_token, body={"action": "blocks.batch_set",
+         "payload": {"items": [{"year": "2027", "month": "03", "day": "11", "period": "3"}],
+                     "active": True, "reason": "请假", "teacher_id": "tch_T001"}})
+    av2 = call("GET", "/appointments/available_teachers",
+               query={"year": "2027", "month": "03", "day": "11", "period": "3"}, token=stu_token)
+    hit = next((t for t in av2["items"] if t["teacher_id"] == "tch_T001"), None)
+    ok(hit is not None and hit["available"] is False, "停诊时段该老师判为不可约")
+
     print()
     if fails:
         print(f"自检未通过：{len(fails)} 项")

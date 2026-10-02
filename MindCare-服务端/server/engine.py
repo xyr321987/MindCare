@@ -468,8 +468,11 @@ def create_appointment(db: Database, student_id: str, body: dict) -> dict:
     slot = sched.slot_id(int(year), int(month), int(day), period)
     slot_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
 
-    # 拒绝重复预约 / 停诊（决策 30/R6）：复用统一冲突检测（学生不设教师/咨询室）
-    conflict = _conflict(db, slot, slot_date, str(period), None, None)
+    # 学生可选具体老师：有 teacher_id 则做教师级冲突检测；无则向后兼容（老师未分配）
+    teacher_id = body.get("teacher_id") or None
+    if teacher_id and not db.teacher.get(str(teacher_id)):
+        raise _err(2002, "教师不存在", "teacher_id")
+    conflict = _conflict(db, slot, slot_date, str(period), teacher_id, None)
     if conflict:
         raise _err(2001, conflict, "slot")
 
@@ -478,10 +481,10 @@ def create_appointment(db: Database, student_id: str, body: dict) -> dict:
     weekday = sched.weekday_from_date(int(year), int(month), int(day))
     db.execute(
         "INSERT INTO appointments"
-        "(apt_id, student_id, name, class_name, year, month, day, period, weekday,"
+        "(apt_id, student_id, teacher_id, name, class_name, year, month, day, period, weekday,"
         " time_start, time_end, slot, date, share_questionnaire, share_treehole, status, created_ts, updated_ts)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        (apt_id, student_id, stu["name"], stu["class_name"], str(year), str(month), str(day),
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (apt_id, student_id, teacher_id, stu["name"], stu["class_name"], str(year), str(month), str(day),
          str(period), str(weekday), sched.period_start(period), sched.period_end(period),
          slot, slot_date, int(bool(body.get("share_questionnaire"))),
          int(bool(body.get("share_treehole"))), "scheduled", now, now),
@@ -510,6 +513,25 @@ def _coerce_period(year, month, day, time_text, period_hint) -> int:
     if period is None:
         raise _err(2001, "字段 time 校验失败：无法定位到节次", "time")
     return period
+
+
+def available_teachers(db: Database, year, month, day, period) -> dict:
+    """某时段的可预约老师（学生选老师用）。
+
+    空闲判定（唯一事实源，复用 `_conflict` 的教师三路检查）：
+    周期可用 + 无该教师同时段预约 + 无全局/个人停诊。
+    """
+    period = _coerce_period(year, month, day, None, period)
+    slot = sched.slot_id(int(year), int(month), int(day), period)
+    slot_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+    items = []
+    for t in db.teacher.list_all():
+        conflict = _conflict(db, slot, slot_date, str(period), t["teacher_id"], None)
+        items.append({
+            "teacher_id": t["teacher_id"], "name": t["name"],
+            "available": conflict is None,
+        })
+    return {"items": items}
 
 
 def my_appointments(db: Database, student_id: str) -> dict:

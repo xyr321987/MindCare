@@ -4,7 +4,7 @@
 唯一事实源： `mindcare/copywriting.md`（点分 ID）+ `mindcare/copywriting.json`
 （`OVERRIDES` / `JSON_ONLY` 的条目运行时读 JSON，见生成器头部说明）。
 
-共 449 条。
+共 453 条。
 """
 from __future__ import annotations
 
@@ -157,6 +157,10 @@ TEXT: Dict[str, str] = {
     "s.appointment.share.treehole": "我的树洞记录",
     "s.appointment.subtitle": "横着是星期，竖着是第几节课。点一个小方块就选好了。",
     "s.appointment.success": "预约好了，老师会在这个时间看到你。",
+    "s.appointment.teacher.empty": "该时段暂无可预约的老师，换一个时间试试",
+    "s.appointment.teacher.loading": "正在查询可预约老师…",
+    "s.appointment.teacher.none": "不指定老师",
+    "s.appointment.teacher.title": "选择预约老师（可选）",
     "s.appointment.time": "时间段",
     "s.appointment.title": "挑一个方便来找老师的时间",
     "s.appointment.year": "年份",
