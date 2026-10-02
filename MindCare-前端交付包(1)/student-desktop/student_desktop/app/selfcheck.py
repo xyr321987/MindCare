@@ -1074,6 +1074,24 @@ def check_ui(app: QtWidgets.QApplication,
                  f"desktop VISIBILITY={VISIBILITY!r}，TreeholeTab.visibility="
                  f"{tree.visibility!r}；树洞请求体字段 = entry_id/content/mood_tag")
 
+    # --- 树洞情绪卡片：mood_tag 写进后要显示**可见的情绪卡片**，不再只是 tooltip ----
+    tree.set_entries([
+        {"entry_id": "tre_mood_down", "ts": f"{today_str()}T21:40:00+08:00",
+         "content": "今天有点低落", "mood_tag": "down"},
+        {"entry_id": "tre_mood_none", "ts": f"{today_str()}T22:00:00+08:00",
+         "content": "没什么特别的", "mood_tag": None},
+    ])
+    pump(app, 60)
+    mood_rows = tree.rows()
+    REPORT.check("树洞条目显示情绪卡片（mood_tag 可见，不再是 hover 才见的 tooltip）",
+                 len(mood_rows) == 2
+                 and mood_rows[0].mood_badge_text == COPY["s.treehole.moodtag.option.down"]
+                 and mood_rows[1].mood_badge_text == "",
+                 f"行数={len(mood_rows)}；"
+                 f"第1行情绪卡片={mood_rows[0].mood_badge_text!r}"
+                 f"（应为 {COPY['s.treehole.moodtag.option.down']!r}）；"
+                 f"第2行情绪卡片={mood_rows[1].mood_badge_text!r}（无标记，应为空）")
+
     # --- 档案页：以 request_help 为显示依据，且**零已下线能力入口** ----------
     # ⚠️ 日期用**今天**（`today_str()`），不用写死的演示日期：档案页的日期选择器
     # 只有"今天"这一项时才会真的选中并渲染这些行（写死日期会让断言看到空列表）。
@@ -2141,7 +2159,8 @@ def check_ts_human(app: QtWidgets.QApplication) -> None:
          "cause_category": "study", "detail": "自检：档案时间显示", "request_help": False},
     ]})
     pump(app, 100)
-    list_text = window.treehole_page.list_widget.item(0).text()
+    tree_labels = [w.text() for w in window.treehole_page.rows()[0].findChildren(QtWidgets.QLabel) if w.text()]
+    list_text = " | ".join(tree_labels)
     row_widgets = [w for w in window.profile_page.rows()[0].findChildren(QtWidgets.QLabel)]
     row_texts = [w.text() for w in row_widgets if w.text()]
     joined = " | ".join([list_text] + row_texts)

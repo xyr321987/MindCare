@@ -9,12 +9,13 @@
 """
 from __future__ import annotations
 
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
+    QLabel,
     QListWidget,
     QListWidgetItem,
     QVBoxLayout,
@@ -28,6 +29,7 @@ from desktop_common.widgets import (
     ChoiceGroup,
     TextArea,
     make_badge,
+    make_body,
     make_error,
     make_ghost_button,
     make_hint,
@@ -35,10 +37,64 @@ from desktop_common.widgets import (
     make_title,
 )
 
-__all__ = ["TreeholeTab", "VISIBILITY"]
+__all__ = ["TreeholeTab", "TreeholeEntryRow", "VISIBILITY", "MOODTAG_COPY"]
 
 #: 树洞的可见性恒为私密（契约里树洞**没有**可见性字段；这里是"无开关"的代码事实）
 VISIBILITY = "private"
+
+#: 情绪标记 → 文案 ID（与编辑器 `mood_group` 的选项同源，保证卡片与选项措辞一致）
+MOODTAG_COPY: Dict[str, str] = {
+    "happy": "s.treehole.moodtag.option.happy",
+    "plain": "s.treehole.moodtag.option.plain",
+    "down": "s.treehole.moodtag.option.down",
+}
+
+#: 情绪标记 → 徽标色调（happy=平静绿 / plain=雾蓝 / down=柔珊瑚，与教师端心情圆点一致）
+MOODTAG_TONE: Dict[str, str] = {
+    "happy": "calm",
+    "plain": "mist",
+    "down": "coral",
+}
+
+
+def moodtag_text(mood_tag: Optional[str]) -> str:
+    """情绪标记 → 可读文案；不在映射里的值（含 `None`）一律返回空串。"""
+    return COPY[MOODTAG_COPY[mood_tag]] if mood_tag in MOODTAG_COPY else ""
+
+
+class TreeholeEntryRow(Card):
+    """一条树洞条目：时间 + **可见的情绪卡片** + 正文。
+
+    情绪标记（`mood_tag`）此前只被放进 tooltip，悬停才看得到；现在渲染成常驻的
+    可见徽标（情绪卡片），学生扫一眼列表就能看到自己当时标记的心情。
+    """
+
+    def __init__(self, entry: dict, parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        self.entry_id = str(entry.get("entry_id") or "")
+        self.mood_tag = entry.get("mood_tag")
+
+        head = QHBoxLayout()
+        head.setSpacing(10)
+        ts = format_ts_human(entry.get("ts"))
+        if ts:
+            head.addWidget(make_hint(ts))
+        head.addStretch(1)
+        self.badge: Optional[QLabel] = None
+        text = moodtag_text(self.mood_tag)
+        if text:
+            self.badge = make_badge(text, tone=MOODTAG_TONE.get(self.mood_tag, "mist"))
+            head.addWidget(self.badge)
+        self.add_layout(head)
+
+        content = str(entry.get("content") or "")
+        if content:
+            self.add(make_body(content))
+
+    @property
+    def mood_badge_text(self) -> str:
+        """情绪卡片文本（自检按此断言，不依赖 Qt 渲染）；无标记返回空串。"""
+        return self.badge.text() if self.badge is not None else ""
 
 
 class TreeholeTab(QWidget):
@@ -57,6 +113,7 @@ class TreeholeTab(QWidget):
         #: 让 QWidget 绘制 QSS 背景（树洞「暮蓝」环境光渐变，见 theme.build_qss）
         self.setAttribute(Qt.WA_StyledBackground, True)
         self._dates: List[str] = []
+        self._rows: List[TreeholeEntryRow] = []
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(24, 20, 24, 20)
@@ -177,21 +234,30 @@ class TreeholeTab(QWidget):
 
     def set_entries(self, entries: List[dict]) -> None:
         self.list_widget.clear()
+        self._clear_rows()
         if not entries:
             self.empty_label.setVisible(True)
             return
         self.empty_label.setVisible(False)
         for entry in entries:
-            # 机器格式的 `2026-10-02T21:40:00+08:00` 不给人看：统一走
-            # `format_ts_human()`（全应用唯一的格式化点，见 `desktop_common/api.py`）
-            ts = format_ts_human(entry.get("ts"))
-            content = str(entry.get("content") or "")
-            mood_tag = entry.get("mood_tag")
-            item = QListWidgetItem(f"{ts}\n{content}" if ts else content)
-            if mood_tag:
-                item.setToolTip(str(mood_tag))
+            row = TreeholeEntryRow(entry)
+            item = QListWidgetItem()
             item.setData(Qt.UserRole, entry.get("entry_id"))
+            item.setSizeHint(row.sizeHint())
             self.list_widget.addItem(item)
+            self.list_widget.setItemWidget(item, row)
+            self._rows.append(row)
+
+    def _clear_rows(self) -> None:
+        """立即摘除旧条目卡片控件（`setItemWidget` 的控件不随 `clear()` 自动销毁）。"""
+        for row in self._rows:
+            row.setParent(None)
+            row.deleteLater()
+        self._rows.clear()
+
+    def rows(self) -> List[TreeholeEntryRow]:
+        """当前渲染的所有条目卡片（自检按此断言）。"""
+        return list(self._rows)
 
     def show_saved(self, text: str) -> None:
         self.editor_area.set_text_value("")
