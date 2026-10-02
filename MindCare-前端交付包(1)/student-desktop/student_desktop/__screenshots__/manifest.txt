@@ -1,5 +1,5 @@
 # MindCare 学生端截图清单（1080x760，offscreen grab）
-# 生成时间：2026-10-03 03:10:45+0800
+# 生成时间：2026-10-03 03:12:12+0800
 # 本文件由 `student_desktop/app/selfcheck.py` 自动写入，请勿手工编辑。
 
 01_login.png                               52713 bytes
@@ -10,9 +10,9 @@
 05_help_choice.png                         67920 bytes
 05b_appointment_grid.png                   66448 bytes
 06_result_self_care.png                    75602 bytes
-07_treehole.png                            81931 bytes
+07_treehole.png                            81918 bytes
 08_profile.png                             59610 bytes
-09_engine_not_ready.png                    50090 bytes
+09_engine_not_ready.png                    50106 bytes
 10_about.png                               69825 bytes
 
-合计 12 张，共 738981 bytes
+合计 12 张，共 738984 bytes
