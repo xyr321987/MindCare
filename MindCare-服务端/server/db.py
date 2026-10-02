@@ -128,7 +128,31 @@ CREATE TABLE IF NOT EXISTS blocks (
     active     INTEGER NOT NULL DEFAULT 1,
     reason     TEXT,
     operator   TEXT,
+    teacher_id TEXT,
     created_ts TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS waitlist (
+    wait_id       TEXT PRIMARY KEY,
+    student_id    TEXT NOT NULL REFERENCES students(student_id),
+    ticket_id     TEXT REFERENCES tickets(ticket_id),
+    year          TEXT,
+    month         TEXT,
+    day           TEXT,
+    period        TEXT,
+    teacher_id    TEXT REFERENCES teachers(teacher_id),
+    room_id       TEXT REFERENCES rooms(room_id),
+    status        TEXT NOT NULL DEFAULT 'waiting',
+    filled_apt_id TEXT,
+    reason        TEXT,
+    created_ts    TEXT NOT NULL,
+    updated_ts    TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS teacher_availability (
+    teacher_id TEXT NOT NULL REFERENCES teachers(teacher_id),
+    weekday    INTEGER NOT NULL,
+    period     INTEGER NOT NULL,
+    active     INTEGER NOT NULL DEFAULT 1,
+    PRIMARY KEY (teacher_id, weekday, period)
 );
 CREATE TABLE IF NOT EXISTS warnings (
     warning_id   TEXT PRIMARY KEY,
@@ -159,6 +183,7 @@ CREATE INDEX IF NOT EXISTS idx_tree_stu_date ON treehole_entries(student_id, dat
 CREATE INDEX IF NOT EXISTS idx_tickets_stu ON tickets(student_id);
 CREATE INDEX IF NOT EXISTS idx_appt_stu ON appointments(student_id);
 CREATE INDEX IF NOT EXISTS idx_appt_slot ON appointments(slot);
+CREATE INDEX IF NOT EXISTS idx_wait_slot ON waitlist(year, month, day, period, status);
 CREATE INDEX IF NOT EXISTS idx_warn_stu ON warnings(student_id);
 """
 
@@ -254,6 +279,9 @@ class Database:
                      "rescheduled_from", "no_show_note"):
             if name not in cols:
                 self.execute(f"ALTER TABLE appointments ADD COLUMN {name} TEXT")
+        bcols = {r["name"] for r in self.query("PRAGMA table_info(blocks)")}
+        if "teacher_id" not in bcols:
+            self.execute("ALTER TABLE blocks ADD COLUMN teacher_id TEXT")
         self.commit()
 
     # ------------------------------------------------------------------ 种子

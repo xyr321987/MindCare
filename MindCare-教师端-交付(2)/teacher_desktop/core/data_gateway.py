@@ -38,6 +38,8 @@ RESOURCE_REGISTRY: Dict[str, str] = {
     "teachers.list":          "全部教师（供预约选择教师）",
     "appointments.events":    "某预约的操作日志（取消/改期/爽约等留痕）",
     "stats.appointments":     "按日期区间统计预约量/完成率/教师/咨询室/状态",
+    "waitlist.list":          "候补队列（按日期/状态筛选）",
+    "teacher_calendar":       "某教师区间内的预约/停诊/周期可用性",
 }
 
 # ---------------------------------------------------------------------------
@@ -54,6 +56,13 @@ ACTION_REGISTRY: Dict[str, str] = {
     "rooms.create":           "新建咨询室",
     "rooms.update":           "编辑咨询室（名称/启用）",
     "rooms.delete":           "删除咨询室",
+    "waitlist.join":          "把学生加入某时段候补",
+    "waitlist.cancel":        "取消候补（退候补）",
+    "teachers.create":        "新建教师（含初始密码）",
+    "teachers.update":        "编辑教师（名称）",
+    "teachers.reset_password": "重置教师密码",
+    "teachers.delete":        "删除教师",
+    "teachers.availability.set": "批量设定教师周期可用时段",
     "warnings.dismiss":       "老师约谈后消除预警，留痕",
     "replies.create":         "新建回复条目",
     "replies.update":         "编辑回复条目（正文/标签/启用）",

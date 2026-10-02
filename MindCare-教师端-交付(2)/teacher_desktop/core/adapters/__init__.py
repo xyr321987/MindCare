@@ -10,11 +10,15 @@ from .appointment_adapter import HttpAppointmentAdapter
 from .export_adapter import HttpExportAdapter
 from .reply_adapter import HttpReplyAdapter
 from .scheduling_adapter import HttpSchedulingAdapter
+from .teacher_admin_adapter import HttpTeacherAdminAdapter
+from .waitlist_adapter import HttpWaitlistAdapter
 from .warning_adapter import HttpWarningAdapter
 
 __all__ = [
     "HttpAppointmentAdapter",
     "HttpSchedulingAdapter",
+    "HttpWaitlistAdapter",
+    "HttpTeacherAdminAdapter",
     "HttpWarningAdapter",
     "HttpReplyAdapter",
     "HttpExportAdapter",

@@ -272,8 +272,7 @@ QCalendarWidget QAbstractItemView {{
 }}
 
 /* ================= 工作预览 ================= */
-QLabel#SectionTitle {{ font-size: 18px; font-weight: 600; color: {T.INK}; }}
-QLabel#StatValue {{ font-size: 26px; font-weight: 600; color: {T.INK}; }}
+QLabel#SectionTitle {{ font-size: 18px; font-weight: 600; color: {T.INK}; }}QLabel#StatValue {{ font-size: 26px; font-weight: 600; color: {T.INK}; }}
 QLabel#StatTitle {{ font-size: 13px; color: {T.INK_SOFT}; }}
 QLabel#StatIcon {{ border-radius: 18px; }}
 QLabel#StatIcon[tone="help"] {{ background-color: {T.MIST}; }}
@@ -286,4 +285,27 @@ QFrame#OverviewTodoRow {{
 QLabel#OverviewTodoDesc {{ font-size: 13px; color: {T.INK_SOFT}; }}
 QLabel#OverviewActivityText {{ font-size: 13px; color: {T.INK}; }}
 QLabel#OverviewActivityTime {{ font-size: 12px; color: {T.INK_SOFT}; }}
+
+/* ================= 教师日历网格 ================= */
+QPushButton#CalCell {{
+    background-color: {T.CARD};
+    color: {T.INK_SOFT};
+    border: 1px solid {T.LINE};
+    border-radius: 8px;
+    padding: 4px 6px;
+    min-height: 38px;
+    font-size: {T.FONT_SMALL}px;
+}}
+QPushButton#CalCell[state="appt"] {{
+    background-color: {T.MIST};
+    color: {T.PRIMARY_INK};
+    border: 1px solid {T.MIST};
+    font-weight: 600;
+}}
+QPushButton#CalCell[state="block"] {{
+    background-color: {WARN_TINT};
+    color: {WARN};
+    border: 1px solid {WARN};
+}}
+QPushButton#CalCell[state="free"]:hover {{ border-color: {T.MIST}; }}
 """

@@ -163,6 +163,26 @@ class Appointment:
 
 
 @dataclass
+class WaitlistEntry:
+    """候补队列条目（学生/工单锚定到某时段，取消/爽约后自动递补）。"""
+    wait_id: str
+    student_id: str
+    student_name: str = ""
+    class_name: str = ""
+    ticket_id: str = ""
+    year: str = ""
+    month: str = ""
+    day: str = ""
+    period: str = ""
+    teacher_id: Optional[str] = None
+    room_id: Optional[str] = None
+    status: str = "waiting"                # waiting | filled | cancelled | expired
+    filled_apt_id: Optional[str] = None
+    reason: Optional[str] = None
+    created_ts: Optional[str] = None
+
+
+@dataclass
 class WarningRecord:
     """连续沮丧不求助预警。
 

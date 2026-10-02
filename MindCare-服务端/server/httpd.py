@@ -42,6 +42,8 @@ ROUTES = [
     ("GET",    "/appointments/blocks",           "any",      "list_blocks"),
     ("POST",   "/appointments/blocks",           "teacher",  "set_block"),
     ("GET",    "/appointments/mine",             "student",  "my_appointments"),
+    ("POST",   "/waitlist",                      "student",  "join_waitlist"),
+    ("GET",    "/waitlist/mine",                 "student",  "my_waitlist"),
     ("POST",   "/db/read",                       "teacher",  "db_read"),
     ("POST",   "/db/write",                      "teacher",  "db_write"),
 ]
@@ -137,6 +139,10 @@ class App:
             return engine.list_blocks(db)
         if handler == "my_appointments":
             return engine.my_appointments(db, subject)
+        if handler == "join_waitlist":
+            return engine.join_waitlist(db, subject, body)
+        if handler == "my_waitlist":
+            return engine.my_waitlist(db, subject)
         if handler == "set_block":
             return engine.set_block(db, subject, body)
         if handler == "db_read":

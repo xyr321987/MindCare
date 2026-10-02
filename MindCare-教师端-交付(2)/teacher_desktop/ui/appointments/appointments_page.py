@@ -15,7 +15,7 @@ from typing import List, Tuple
 
 from PySide6.QtCore import QDate, Qt
 from PySide6.QtWidgets import (
-    QDateEdit, QFrame, QHBoxLayout, QVBoxLayout, QWidget,
+    QDateEdit, QFrame, QHBoxLayout, QMessageBox, QVBoxLayout, QWidget,
 )
 
 from desktop_common.widgets import (
@@ -23,7 +23,7 @@ from desktop_common.widgets import (
 )
 
 from ...core import enums
-from ...core.models import Appointment
+from ...core.models import Appointment, WaitlistEntry
 from ..common.async_mixin import PageBase
 from .batch_block_dialog import BatchBlockDialog
 from .block_dialog import BlockDialog
@@ -94,11 +94,13 @@ class AppointmentsPage(PageBase):
     def refresh(self) -> None:
         adapter = self.ctx.adapters.appointment
         scheduling = self.ctx.adapters.scheduling
+        waitlist = self.ctx.adapters.waitlist
         date = self._date
 
         def _job():
             return (adapter.pending_requests(), adapter.list_by_date(date),
-                    scheduling.rooms(), scheduling.teachers())
+                    scheduling.rooms(), scheduling.teachers(),
+                    waitlist.list({"status": "waiting"}))
 
         self.call(_job, on_ok=self._render)
 
@@ -108,8 +110,9 @@ class AppointmentsPage(PageBase):
 
     # ------------------------------------------------------------------ 渲染
     def _render(self, payload: Tuple[List[Appointment], List[Appointment],
-                                     List[dict], List[dict]]) -> None:
-        pendings, day_appts, rooms, teachers = payload
+                                     List[dict], List[dict],
+                                     List[WaitlistEntry]]) -> None:
+        pendings, day_appts, rooms, teachers, waitlist = payload
         self._rooms = list(rooms or [])
         self._teachers = list(teachers or [])
         self._clear_content()
@@ -123,6 +126,9 @@ class AppointmentsPage(PageBase):
             self._content_box.addWidget(self._inline_hint("暂无待预约求助，新的求助会出现在这里"))
 
         self._content_box.addSpacing(4)
+        self._render_waitlist(waitlist)
+
+        self._content_box.addSpacing(4)
         self._content_box.addWidget(
             make_label(f"{self._date} 单线流程", "Heading", word_wrap=False))
 
@@ -134,6 +140,38 @@ class AppointmentsPage(PageBase):
             self._content_box.addWidget(self._timeline_node(appt))
 
         self._content_box.addStretch(1)
+
+    def _render_waitlist(self, waitlist: List[WaitlistEntry]) -> None:
+        self._content_box.addWidget(
+            make_label(f"候补队列（{len(waitlist)}）", "Heading", word_wrap=False))
+        if not waitlist:
+            self._content_box.addWidget(self._inline_hint("暂无候补，取消/爽约会自动递补这里的同学"))
+            return
+        for w in waitlist:
+            self._content_box.addWidget(self._waitlist_card(w))
+
+    def _waitlist_card(self, w: WaitlistEntry) -> QFrame:
+        card = QFrame()
+        card.setObjectName("Panel")
+        lay = QHBoxLayout(card)
+        lay.setContentsMargins(16, 10, 16, 10)
+        lay.setSpacing(10)
+        info = QVBoxLayout()
+        info.setSpacing(2)
+        info.addWidget(make_label(
+            f"{w.student_name} · {w.class_name}", "CardTitle", word_wrap=False))
+        info.addWidget(make_label(
+            f"候补：{w.year}-{w.month}-{w.day} 第{int(w.period or 0)}节", "Hint"))
+        lay.addLayout(info, 1)
+        cancel_btn = make_button("退候补", "ghost")
+        cancel_btn.clicked.connect(lambda: self._cancel_waitlist(w.wait_id))
+        lay.addWidget(cancel_btn)
+        return card
+
+    def _cancel_waitlist(self, wait_id: str) -> None:
+        self.call(lambda: self.ctx.adapters.waitlist.cancel(wait_id),
+                  on_ok=lambda _d: (self.show_toast("已退候补"), self.refresh()),
+                  on_fail=self._schedule_fail)
 
     def _pending_card(self, appt: Appointment) -> QFrame:
         card = QFrame()
@@ -296,7 +334,32 @@ class AppointmentsPage(PageBase):
             self.show_toast("预约时间已写入预约数据库")
             self.refresh()
 
-        self.call(_job, on_ok=_ok, on_fail=self._schedule_fail)
+        self.call(_job, on_ok=_ok,
+                  on_fail=lambda e: self._schedule_fail_or_waitlist(
+                      appt, iso, teacher_id, room_id, e))
+
+    def _schedule_fail_or_waitlist(self, appt: Appointment, iso: str,
+                                   teacher_id, room_id, exc: Exception) -> None:
+        msg = getattr(exc, "message", "") or ""
+        if msg not in ("该时段已被预约", "该教师此时段已有预约", "该咨询室此时段已被占用"):
+            self._schedule_fail(exc)
+            return
+        box = QMessageBox(self)
+        box.setWindowTitle("时段已满")
+        box.setText(f"{msg}\n是否将 {appt.student_name} 加入该时段候补？")
+        box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        box.setDefaultButton(QMessageBox.Yes)
+        if box.exec() != QMessageBox.Yes:
+            return
+        year, month, day, time_text = iso[:4], iso[5:7], iso[8:10], iso[11:16]
+
+        def _job():
+            return self.ctx.adapters.waitlist.join(
+                appt.student_id, year, month, day, time_text,
+                teacher_id, room_id, "教师加入候补")
+        self.call(_job,
+                  on_ok=lambda _w: (self.show_toast("已加入候补"), self.refresh()),
+                  on_fail=self._schedule_fail)
 
     def _open_reschedule(self, appt: Appointment) -> None:
         dialog = ScheduleDialog(appt.student_name, appt.class_name,

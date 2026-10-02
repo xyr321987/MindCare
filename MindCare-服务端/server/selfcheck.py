@@ -12,6 +12,7 @@ from typing import Optional
 from server.db import Database
 from server.httpd import App
 from server import engine
+from server import schedule as sched
 
 
 def main() -> int:
@@ -264,6 +265,82 @@ def main() -> int:
     acts = [e["action"] for e in events.get("items") or []]
     ok("scheduled" in acts and "rescheduled" in acts and "cancelled" in acts,
        f"操作日志含 scheduled/rescheduled/cancelled（实际 {acts}）")
+
+    # 28 候补 + 取消自动递补
+    occ = call("POST", "/db/write", token=tea_token, body={"action": "appointments.schedule",
+               "payload": {"student_id": "stu_2023002", "year": "2026", "month": "12", "day": "10",
+                           "time": "10:00", "room_id": "rm_default", "teacher_id": "tch_T001"}})
+    ok(occ.get("status") == "scheduled", "占满 12-10 10:00 时段")
+    wl = call("POST", "/waitlist", token=stu_token,
+              body={"wait_id": "wait_1", "year": "2026", "month": "12", "day": "10", "time": "10:00"})
+    ok(wl.get("status") == "waiting", "学生加入候补（时段已满）")
+    ok(call("POST", "/waitlist", token=stu_token,
+            body={"wait_id": "wait_1", "year": "2026", "month": "12", "day": "10", "time": "10:00"}).get("wait_id") == "wait_1",
+       "候补加入幂等")
+    call("POST", "/db/write", token=tea_token, body={"action": "appointments.cancel",
+         "payload": {"appointment_id": occ["appointment_id"], "reason": "临时取消"}})
+    wrow = db.query_one("SELECT * FROM waitlist WHERE wait_id='wait_1'")
+    ok(wrow["status"] == "filled" and wrow["filled_apt_id"], "取消后自动递补（filled）")
+    filled = db.query_one("SELECT * FROM appointments WHERE apt_id=?", (wrow["filled_apt_id"],))
+    ok(filled is not None and filled["student_id"] == "stu_2023001" and filled["status"] == "scheduled",
+       "递补生成预约（学生=候补者）")
+
+    # 29 候补 FIFO
+    occ2 = call("POST", "/db/write", token=tea_token, body={"action": "appointments.schedule",
+                "payload": {"student_id": "stu_2023002", "year": "2026", "month": "12", "day": "11",
+                            "time": "10:00", "room_id": "rm_default", "teacher_id": "tch_T001"}})
+    call("POST", "/waitlist", token=stu_token,
+         body={"wait_id": "wait_a", "year": "2026", "month": "12", "day": "11", "time": "10:00"})
+    regc = call("POST", "/auth/register",
+                body={"class_name": "高一(4)班", "name": "王五", "seat_no": "2023004", "password": "1234"})
+    call("POST", "/waitlist", token=regc["token"],
+         body={"wait_id": "wait_b", "year": "2026", "month": "12", "day": "11", "time": "10:00"})
+    call("POST", "/db/write", token=tea_token, body={"action": "appointments.cancel",
+         "payload": {"appointment_id": occ2["appointment_id"], "reason": "取消"}})
+    ok(db.query_one("SELECT status FROM waitlist WHERE wait_id='wait_a'")["status"] == "filled"
+       and db.query_one("SELECT status FROM waitlist WHERE wait_id='wait_b'")["status"] == "waiting",
+       "候补 FIFO：早加入者先递补")
+
+    # 30 教师管理 + 多教师登录
+    tc = call("POST", "/db/write", token=tea_token, body={"action": "teachers.create",
+              "payload": {"name": "李老师", "password": "abcd1234"}})
+    ok(bool(tc.get("teacher_id")), "新建教师（含凭证）")
+    tlogin2 = call("POST", "/auth/login",
+                   {"role": "teacher", "id": tc["teacher_id"], "password": "abcd1234"})
+    ok(bool(tlogin2.get("token")), "新教师可登录")
+    ok(call("POST", "/db/write", token=tea_token, body={"action": "teachers.delete",
+            "payload": {"teacher_id": tc["teacher_id"]}}).get("teacher_id") == tc["teacher_id"],
+       "删除非预置教师")
+
+    # 31 教师周期可用性冲突（RFC 7953 式）
+    wd11 = sched.weekday_from_date(2026, 12, 11)
+    call("POST", "/db/write", token=tea_token, body={"action": "teachers.availability.set",
+         "payload": {"teacher_id": "tch_T001",
+                     "items": [{"weekday": wd11, "period": 3, "active": False}]}})
+    expect_err("POST", "/db/write",
+               {"action": "appointments.schedule",
+                "payload": {"student_id": "stu_2023002", "year": "2026", "month": "12", "day": "11",
+                            "time": "10:00", "room_id": "rm_default", "teacher_id": "tch_T001"}},
+               tea_token, 2001, "教师该时段不可约被拒")
+
+    # 32 教师个人停诊冲突（blocks.teacher_id）
+    call("POST", "/db/write", token=tea_token, body={"action": "blocks.batch_set",
+         "payload": {"items": [{"year": "2026", "month": "12", "day": "12", "period": "3"}],
+                     "active": True, "reason": "个人请假", "teacher_id": "tch_T001"}})
+    expect_err("POST", "/db/write",
+               {"action": "appointments.schedule",
+                "payload": {"student_id": "stu_2023002", "year": "2026", "month": "12", "day": "12",
+                            "time": "10:00", "room_id": "rm_default", "teacher_id": "tch_T001"}},
+               tea_token, 2001, "教师个人停诊冲突被拒")
+
+    # 33 教师日历 + 候补列表资源
+    cal = call("POST", "/db/read", token=tea_token, body={"resource": "teacher_calendar",
+               "params": {"teacher_id": "tch_T001", "start": "2026-12-01", "end": "2026-12-31"}})
+    ok(isinstance(cal.get("appointments"), list) and isinstance(cal.get("availability"), list),
+       "教师日历返回预约 + 可用性")
+    wlist = call("POST", "/db/read", token=tea_token, body={"resource": "waitlist.list",
+                 "params": {"year": "2026", "month": "12"}})
+    ok(any(w["wait_id"] == "wait_b" for w in wlist["items"]), "候补列表含 waiting 条目")
 
     print()
     if fails:

@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 from desktop_common.widgets import make_button, make_label
 
 from .appointments.appointments_page import AppointmentsPage
+from .calendar.teacher_calendar_page import TeacherCalendarPage
 from .common.async_mixin import PageContext
 from .common.svg import svg_pixmap
 from .export.export_page import ExportPage
@@ -37,6 +38,7 @@ NAV_ITEMS = [
     ("overview", "工作预览"),
     ("triage", "分诊台"),
     ("appointments", "今日预约"),
+    ("calendar", "教师日历"),
     ("stats", "排班统计"),
     ("warnings", "预警记录"),
     ("replies", "回复库"),
@@ -49,6 +51,7 @@ NAV_ICONS = {
     "overview": "icon_overview.svg",
     "triage": "icon_triage.svg",
     "appointments": "icon_appointment.svg",
+    "calendar": "icon_calendar.svg",
     "stats": "icon_stats.svg",
     "warnings": "icon_warning.svg",
     "replies": "icon_replies.svg",
@@ -79,6 +82,7 @@ class MainWindow(QWidget):
             "overview": OverviewPage(ctx),
             "triage": TriagePage(ctx),
             "appointments": AppointmentsPage(ctx),
+            "calendar": TeacherCalendarPage(ctx),
             "stats": StatsPage(ctx),
             "warnings": WarningsPage(ctx),
             "replies": RepliesPage(ctx),

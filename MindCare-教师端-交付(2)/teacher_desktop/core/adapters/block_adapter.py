@@ -19,14 +19,18 @@ class HttpBlockAdapter(BlockAdapter):
         return list((data or {}).get("items", []))
 
     def set(self, year: int, month: int, day: int, period: int,
-            active: bool, reason: Optional[str] = None) -> dict:
+            active: bool, reason: Optional[str] = None,
+            teacher_id: Optional[str] = None) -> dict:
         return self.gateway.write("blocks.set", {
             "year": str(year), "month": str(month), "day": str(day),
             "period": str(period), "active": bool(active), "reason": reason,
+            "teacher_id": teacher_id,
         })
 
     def batch_set(self, items: List[dict], active: bool,
-                  reason: Optional[str] = None) -> dict:
+                  reason: Optional[str] = None,
+                  teacher_id: Optional[str] = None) -> dict:
         return self.gateway.write("blocks.batch_set", {
             "items": items, "active": bool(active), "reason": reason,
+            "teacher_id": teacher_id,
         })

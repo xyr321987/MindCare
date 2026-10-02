@@ -33,6 +33,8 @@ from teacher_desktop.core.adapters.export_adapter import HttpExportAdapter  # no
 from teacher_desktop.core.adapters.block_adapter import HttpBlockAdapter  # noqa: E402
 from teacher_desktop.core.adapters.student_admin_adapter import HttpStudentAdminAdapter  # noqa: E402
 from teacher_desktop.core.adapters.scheduling_adapter import HttpSchedulingAdapter  # noqa: E402
+from teacher_desktop.core.adapters.waitlist_adapter import HttpWaitlistAdapter  # noqa: E402
+from teacher_desktop.core.adapters.teacher_admin_adapter import HttpTeacherAdminAdapter  # noqa: E402
 
 FAILS: list[str] = []
 
@@ -267,6 +269,24 @@ def run_cases(base: str) -> None:
     stats = sched_aux.stats("2026-11-01", "2026-11-30")
     check(isinstance(stats.get("total"), int) and "咨询室A" in (stats.get("by_room") or {}),
           "⑳ 统计返回总量 + 咨询室名称分组")
+
+    # 21 候补 + 取消自动递补（真实 HTTP + 适配器）
+    wl = HttpWaitlistAdapter(gw)
+    occ = appt.schedule("stu_2023002", None, "2027-01-05T10:00:00+08:00", None,
+                        teacher_id="tch_T001", room_id="rm_default")
+    sc2.request("POST", "/waitlist", body={"wait_id": "wl_e2e", "year": "2027",
+                                           "month": "01", "day": "05", "time": "10:00"})
+    appt.cancel(occ.appointment_id, "取消测试")
+    filled = [e for e in wl.list({"year": "2027"}) if e.wait_id == "wl_e2e"]
+    check(filled and filled[0].status == "filled", "㉑ 学生加入候补 → 教师取消 → 自动递补（filled）")
+
+    # 22 教师管理 + 多教师登录
+    tadm = HttpTeacherAdminAdapter(gw)
+    tc = tadm.create("张老师", "zzzz1111")
+    check(bool(tc.get("teacher_id")), "㉒ 新建教师（含凭证）")
+    tlogin = gw.client.request("POST", "/auth/login", body={
+        "role": "teacher", "id": tc["teacher_id"], "password": "zzzz1111"})
+    check(bool(tlogin.get("token")), "㉒ 新教师可登录")
 
 
 if __name__ == "__main__":

@@ -48,6 +48,8 @@ def make_adapters(settings: Settings):
     from ..core.adapters.reply_adapter import HttpReplyAdapter
     from ..core.adapters.scheduling_adapter import HttpSchedulingAdapter
     from ..core.adapters.student_admin_adapter import HttpStudentAdminAdapter
+    from ..core.adapters.teacher_admin_adapter import HttpTeacherAdminAdapter
+    from ..core.adapters.waitlist_adapter import HttpWaitlistAdapter
     from ..core.adapters.warning_adapter import HttpWarningAdapter
 
     gateway = DataGateway(settings.server)
@@ -59,6 +61,8 @@ def make_adapters(settings: Settings):
         block=HttpBlockAdapter(gateway),
         student_admin=HttpStudentAdminAdapter(gateway),
         scheduling=HttpSchedulingAdapter(gateway),
+        waitlist=HttpWaitlistAdapter(gateway),
+        teacher_admin=HttpTeacherAdminAdapter(gateway),
     )
 
 
@@ -71,3 +75,5 @@ class Adapters:
     block: object
     student_admin: object
     scheduling: object
+    waitlist: object
+    teacher_admin: object

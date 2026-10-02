@@ -11,7 +11,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 from . import schedule as sched
-from .db import Database, hash_password, verify_password
+from .db import Database, PRESET_TEACHER_ID, hash_password, verify_password
 
 # --------------------------------------------------------------------------- 常量
 EXPIRES_SECONDS = 43200  # 12h（契约 §2.1）
@@ -449,17 +449,15 @@ def create_appointment(db: Database, student_id: str, body: dict) -> dict:
     time_text = str(body.get("time") or "")
     period = _coerce_period(year, month, day, time_text, body.get("period"))
     slot = sched.slot_id(int(year), int(month), int(day), period)
+    slot_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
 
-    # 拒绝重复预约（决策 30/R6）：同 slot 已有 scheduled 预约
-    clash = db.query_one(
-        "SELECT 1 FROM appointments WHERE slot=? AND status='scheduled'", (slot,)
-    )
-    if clash:
-        raise _err(2001, "该时段已被预约", "slot")
+    # 拒绝重复预约 / 停诊（决策 30/R6）：复用统一冲突检测（学生不设教师/咨询室）
+    conflict = _conflict(db, slot, slot_date, str(period), None, None)
+    if conflict:
+        raise _err(2001, conflict, "slot")
 
     stu = db.query_one("SELECT * FROM students WHERE student_id=?", (student_id,))
     now = sched.now_iso()
-    slot_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
     weekday = sched.weekday_from_date(int(year), int(month), int(day))
     db.execute(
         "INSERT INTO appointments"
@@ -522,6 +520,7 @@ def set_block(db: Database, operator: str, body: dict) -> dict:
     period = body.get("period")
     active = bool(body.get("active", True))
     reason = body.get("reason")
+    teacher_id = body.get("teacher_id")  # None=全局停诊；有值=该教师个人停诊
     try:
         slot = sched.slot_id(int(year), int(month), int(day), int(period))
     except (TypeError, ValueError):
@@ -532,19 +531,170 @@ def set_block(db: Database, operator: str, body: dict) -> dict:
     existing = db.query_one("SELECT * FROM blocks WHERE slot=?", (slot,))
     if existing:
         db.execute(
-            "UPDATE blocks SET active=?, reason=?, operator=?, created_ts=? WHERE slot=?",
-            (int(active), reason, operator, now, slot),
+            "UPDATE blocks SET active=?, reason=?, operator=?, teacher_id=?, created_ts=? WHERE slot=?",
+            (int(active), reason, operator, teacher_id, now, slot),
         )
     else:
         db.execute(
-            "INSERT INTO blocks(blk_id, slot, year, month, day, period, active, reason, operator, created_ts)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?)",
+            "INSERT INTO blocks(blk_id, slot, year, month, day, period, active, reason, operator, teacher_id, created_ts)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
             (new_id("blk_"), slot, str(year), str(month), str(day), str(period),
-             int(active), reason, operator, now),
+             int(active), reason, operator, teacher_id, now),
         )
     db.commit()
     row = db.query_one("SELECT * FROM blocks WHERE slot=?", (slot,))
     return row
+
+
+# =========================================================================== 候补（waitlist）与教师
+def join_waitlist(db: Database, student_id: str, body: dict) -> dict:
+    """学生加入候补（幂等）。仅当目标时段已被预约时才允许加入。"""
+    wait_id = str(body.get("wait_id") or "").strip()
+    if not wait_id:
+        raise _err(2001, "字段 wait_id 校验失败：必须是非空字符串", "wait_id")
+    existing = db.query_one("SELECT * FROM waitlist WHERE wait_id=?", (wait_id,))
+    if existing:
+        return {"wait_id": existing["wait_id"], "created_ts": existing["created_ts"]}
+
+    year, month, day = body.get("year"), body.get("month"), body.get("day")
+    time_text = str(body.get("time") or "")
+    period = _coerce_period(year, month, day, time_text, body.get("period"))
+    slot = sched.slot_id(int(year), int(month), int(day), period)
+    occupied = db.query_one(
+        "SELECT 1 FROM appointments WHERE slot=? AND status='scheduled'", (slot,))
+    if not occupied:
+        raise _err(2001, "该时段当前可约，请直接预约", "slot")
+    _require_student(db, student_id)
+    now = sched.now_iso()
+    db.execute(
+        "INSERT INTO waitlist(wait_id, student_id, ticket_id, year, month, day, period,"
+        " teacher_id, room_id, status, reason, created_ts, updated_ts)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (wait_id, student_id, body.get("ticket_id"), str(year), str(month), str(day),
+         str(period), body.get("teacher_id"), body.get("room_id"), "waiting",
+         body.get("reason"), now, now),
+    )
+    db.commit()
+    return {"wait_id": wait_id, "status": "waiting", "created_ts": now}
+
+
+def my_waitlist(db: Database, student_id: str) -> dict:
+    rows = db.query(
+        "SELECT * FROM waitlist WHERE student_id=? ORDER BY created_ts DESC", (student_id,))
+    return {"items": [dict(r) for r in rows]}
+
+
+def _promote_waitlist(db: Database, year, month, day, period,
+                      teacher_id, room_id, actor: str) -> Optional[str]:
+    """取消/爽约/改期释放 slot 后，把最早匹配的候补递补为预约（FIFO，单槽单补）。
+
+    **不 commit**：由调用方（cancel/no_show/reschedule）在同一事务内 commit，保证
+    「槽释放 + 递补」原子性（对齐 SQLite WAL 单写者纪律）。返回新预约 id 或 None。
+    """
+    rows = db.query(
+        "SELECT * FROM waitlist WHERE year=? AND month=? AND day=? AND period=?"
+        " AND status='waiting' ORDER BY created_ts",
+        (str(year), str(month), str(day), str(period)),
+    )
+    candidate = None
+    for w in rows:
+        if w["teacher_id"] and teacher_id and w["teacher_id"] != teacher_id:
+            continue
+        if w["room_id"] and room_id and w["room_id"] != room_id:
+            continue
+        candidate = w
+        break
+    if not candidate:
+        return None
+
+    slot = sched.slot_id(int(year), int(month), int(day), int(period))
+    dup = db.query_one(
+        "SELECT 1 FROM appointments WHERE student_id=? AND slot=? AND status='scheduled'",
+        (candidate["student_id"], slot))
+    if dup:  # 保守：该生此时段已有预约则不递补（防止重复预约）
+        return None
+
+    stu = _require_student(db, candidate["student_id"])
+    apt_id = new_id("apt_")
+    period_i = int(period)
+    weekday = sched.weekday_from_date(int(year), int(month), int(day))
+    t_id = candidate["teacher_id"] or teacher_id
+    r_id = candidate["room_id"] or room_id
+    now = sched.now_iso()
+    db.execute(
+        "INSERT INTO appointments"
+        "(apt_id, student_id, ticket_id, teacher_id, room_id, name, class_name,"
+        " year, month, day, period, weekday, time_start, time_end, slot, date,"
+        " share_questionnaire, share_treehole, status, note, created_ts, updated_ts)"
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (apt_id, candidate["student_id"], candidate["ticket_id"], t_id, r_id,
+         stu["name"], stu["class_name"], str(year), str(month), str(day), str(period_i),
+         str(weekday), sched.period_start(period_i), sched.period_end(period_i), slot,
+         f"{int(year):04d}-{int(month):02d}-{int(day):02d}", 1, 0, "scheduled",
+         "候补递补", now, now),
+    )
+    if candidate["ticket_id"]:
+        db.execute("UPDATE tickets SET status='accepted', updated_ts=? WHERE ticket_id=?",
+                   (now, candidate["ticket_id"]))
+    db.execute("UPDATE waitlist SET status='filled', filled_apt_id=?, updated_ts=? WHERE wait_id=?",
+               (apt_id, now, candidate["wait_id"]))
+    _log_event(db, apt_id, actor, "scheduled", "候补自动递补")
+    return apt_id
+
+
+def set_teacher_availability(db: Database, body: dict) -> dict:
+    """替换式设定某教师周期可用性（items=[{weekday, period, active}]）。
+
+    存「不可约」的显式行（active=0）；缺行 = 默认可约。全量替换保证与弹窗勾选一致。
+    """
+    teacher_id = str(body.get("teacher_id") or "")
+    t = db.query_one("SELECT 1 FROM teachers WHERE teacher_id=?", (teacher_id,))
+    if not t:
+        raise _err(2002, "教师不存在", "teacher_id")
+    items = list(body.get("items") or [])
+    db.execute("DELETE FROM teacher_availability WHERE teacher_id=?", (teacher_id,))
+    for it in items:
+        try:
+            wd, period = int(it["weekday"]), int(it["period"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if not (1 <= wd <= 7 and sched.PERIOD_INDEX_MIN <= period <= sched.PERIOD_INDEX_MAX):
+            continue
+        active = int(bool(it.get("active", True)))
+        db.execute(
+            "INSERT INTO teacher_availability(teacher_id, weekday, period, active)"
+            " VALUES(?,?,?,?)",
+            (teacher_id, wd, period, active),
+        )
+    db.commit()
+    rows = db.query(
+        "SELECT weekday, period, active FROM teacher_availability WHERE teacher_id=?",
+        (teacher_id,))
+    return {"teacher_id": teacher_id, "availability": [dict(r) for r in rows]}
+
+
+def teacher_calendar(db: Database, teacher_id: str, start: str, end: str) -> dict:
+    """某教师的个人日历：区间内预约 + 停诊（含全局）+ 周期可用性。"""
+    rows = db.query(
+        "SELECT * FROM appointments WHERE teacher_id=? AND date>=? AND date<=?"
+        " ORDER BY date, period", (teacher_id, start, end))
+    appts = [_teacher_appointment(db, a, sched.today_str()) for a in rows]
+    owned_blocks = []
+    for b in db.query("SELECT * FROM blocks ORDER BY created_ts"):
+        if b["teacher_id"] and b["teacher_id"] != teacher_id:
+            continue
+        bdate = (b.get("slot") or "").split("#")[0]
+        if not bdate or not (start <= bdate <= end):
+            continue
+        owned_blocks.append(dict(b))
+    availability = db.query(
+        "SELECT weekday, period, active FROM teacher_availability WHERE teacher_id=?",
+        (teacher_id,))
+    return {
+        "teacher_id": teacher_id, "start": start, "end": end,
+        "appointments": appts, "blocks": owned_blocks,
+        "availability": [dict(a) for a in availability],
+    }
 
 
 # =========================================================================== 分诊（教师）
@@ -734,6 +884,9 @@ def _teacher_appointment(db: Database, a: dict, today: str) -> dict:
         "room_id": a["room_id"],
         "room_name": room_name,
         "scheduled_at": _iso_from_appt(a),
+        "date": a["date"],
+        "period": a["period"],
+        "weekday": a["weekday"],
         "status": a["status"],
         "note": a["note"],
         "cancel_reason": a["cancel_reason"],
@@ -771,7 +924,7 @@ def _reply_item(r: dict) -> dict:
 def _conflict(db: Database, slot: str, date: str, period: str,
               teacher_id: Optional[str], room_id: Optional[str],
               exclude_apt_id: Optional[str] = None) -> Optional[str]:
-    """预约冲突检测：同格 / 同教师同时段 / 同咨询室同时段，返回冲突文案或 None。"""
+    """预约冲突检测：同格 / 同教师同时段 / 同咨询室同时段 / 停诊 / 教师可用性。"""
     def _hit(sql: str, args: list) -> bool:
         return db.query_one(sql, args) is not None
 
@@ -805,6 +958,28 @@ def _conflict(db: Database, slot: str, date: str, period: str,
             args.append(exclude_apt_id)
         if _hit(q, args):
             return "该咨询室此时段已被占用"
+
+    # 4. 停诊冲突（全局停诊 或 该教师个人停诊）
+    q = ("SELECT 1 FROM blocks WHERE slot=? AND active=1"
+         " AND (teacher_id IS NULL OR teacher_id=?)")
+    args = [slot, teacher_id]
+    if _hit(q, args):
+        return "该教师此时段停诊" if teacher_id else "该时段已停诊"
+
+    # 5. 教师周期可用性（RFC 7953 VAVAILABILITY 式：缺省全可用，显式关才拦）
+    if teacher_id:
+        try:
+            yy, mm, dd = (int(x) for x in date.split("-"))
+            wd = sched.weekday_from_date(yy, mm, dd)
+        except (ValueError, AttributeError):
+            wd = -1
+        if wd > 0:
+            av = db.query_one(
+                "SELECT active FROM teacher_availability"
+                " WHERE teacher_id=? AND weekday=? AND period=?",
+                (teacher_id, wd, int(period)))
+            if av is not None and not bool(av["active"]):
+                return "该教师此时段不可约"
     return None
 
 
@@ -921,6 +1096,30 @@ def db_read(db: Database, resource: str, params: dict) -> Any:
             "by_teacher": by_teacher, "by_room": by_room, "by_status": by_status,
             "rows": [dict(r) for r in rows],
         }
+    if resource == "waitlist.list":
+        year = params.get("year")
+        month = params.get("month")
+        day = params.get("day")
+        status = params.get("status")
+        sql = ("SELECT w.*, s.name AS student_name, s.class_name FROM waitlist w"
+               " JOIN students s ON s.student_id=w.student_id")
+        conds, args = [], []
+        if year:
+            conds.append("w.year=?"); args.append(str(year))
+        if month:
+            conds.append("w.month=?"); args.append(str(month))
+        if day:
+            conds.append("w.day=?"); args.append(str(day))
+        if status:
+            conds.append("w.status=?"); args.append(str(status))
+        if conds:
+            sql += " WHERE " + " AND ".join(conds)
+        sql += " ORDER BY w.created_ts"
+        return {"items": [dict(r) for r in db.query(sql, args)]}
+    if resource == "teacher_calendar":
+        return teacher_calendar(db, params.get("teacher_id") or "",
+                                params.get("start") or today,
+                                params.get("end") or today)
     raise _err(2001, f"未注册的资源: {resource}", "resource")
 
 
@@ -996,6 +1195,9 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
              apt_id, now, apt_id),
         )
         _log_event(db, apt_id, "teacher", "rescheduled", payload.get("note"))
+        # 改期释放旧时段 → 递补候补（同一事务，保证原子性）
+        _promote_waitlist(db, a["year"], a["month"], a["day"], a["period"],
+                          a["teacher_id"], a["room_id"], "teacher")
         db.commit()
         return _teacher_appointment(
             db, db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,)),
@@ -1012,6 +1214,9 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         if a["ticket_id"]:
             db.execute("UPDATE tickets SET status='pending', updated_ts=? WHERE ticket_id=?", (now, a["ticket_id"]))
         _log_event(db, apt_id, "teacher", "cancelled", reason)
+        # 取消释放时段 → 递补候补（同一事务，保证原子性）
+        _promote_waitlist(db, a["year"], a["month"], a["day"], a["period"],
+                          a["teacher_id"], a["room_id"], "teacher")
         db.commit()
         return _teacher_appointment(
             db, db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,)),
@@ -1026,6 +1231,9 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         db.execute("UPDATE appointments SET status='no_show', no_show_note=?, updated_ts=? WHERE apt_id=?",
                    (note, now, apt_id))
         _log_event(db, apt_id, "teacher", "no_show", note)
+        # 爽约释放时段 → 递补候补（同一事务，保证原子性）
+        _promote_waitlist(db, a["year"], a["month"], a["day"], a["period"],
+                          a["teacher_id"], a["room_id"], "teacher")
         db.commit()
         return _teacher_appointment(
             db, db.query_one("SELECT * FROM appointments WHERE apt_id=?", (apt_id,)),
@@ -1061,6 +1269,7 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         items = list(payload.get("items") or [])
         active = bool(payload.get("active", True))
         reason = payload.get("reason")
+        teacher_id = payload.get("teacher_id")  # None=全局；有值=该教师个人停诊
         now = sched.now_iso()
         slots = []
         for it in items:
@@ -1071,14 +1280,14 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
                 continue
             existing = db.query_one("SELECT * FROM blocks WHERE slot=?", (slot,))
             if existing:
-                db.execute("UPDATE blocks SET active=?, reason=?, operator=?, created_ts=? WHERE slot=?",
-                           (int(active), reason, "teacher", now, slot))
+                db.execute("UPDATE blocks SET active=?, reason=?, operator=?, teacher_id=?, created_ts=? WHERE slot=?",
+                           (int(active), reason, "teacher", teacher_id, now, slot))
             else:
                 db.execute(
-                    "INSERT INTO blocks(blk_id, slot, year, month, day, period, active, reason, operator, created_ts)"
-                    " VALUES(?,?,?,?,?,?,?,?,?,?)",
+                    "INSERT INTO blocks(blk_id, slot, year, month, day, period, active, reason, operator, teacher_id, created_ts)"
+                    " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
                     (new_id("blk_"), slot, str(it["year"]), str(it["month"]), str(it["day"]),
-                     str(it["period"]), int(active), reason, "teacher", now))
+                     str(it["period"]), int(active), reason, "teacher", teacher_id, now))
             slots.append(slot)
         db.commit()
         return {"slots": slots}
@@ -1170,6 +1379,66 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         )
         db.commit()
         return {"student_id": student_id, "reset": True}
+    if action == "waitlist.join":
+        return join_waitlist(db, str(payload.get("student_id") or ""), payload)
+    if action == "waitlist.cancel":
+        wait_id = str(payload.get("wait_id") or "")
+        w = db.query_one("SELECT * FROM waitlist WHERE wait_id=?", (wait_id,))
+        if not w:
+            raise _err(2002, "候补不存在", "wait_id")
+        db.execute("UPDATE waitlist SET status='cancelled', updated_ts=? WHERE wait_id=?",
+                   (sched.now_iso(), wait_id))
+        db.commit()
+        return dict(db.query_one("SELECT * FROM waitlist WHERE wait_id=?", (wait_id,)))
+    if action == "teachers.create":
+        name = str(payload.get("name") or "").strip()
+        password = str(payload.get("password") or "")
+        if not name:
+            raise _err(2001, "字段 name 校验失败：必须是非空字符串", "name")
+        if len(password) < 4:
+            raise _err(2001, "字段 password 校验失败：长度至少 4 位", "password")
+        teacher_id = new_id("tch_")
+        salt, digest = hash_password(password)
+
+        def _do(cur):
+            cur.execute("INSERT INTO teachers(teacher_id, name) VALUES(?,?)",
+                        (teacher_id, name))
+            cur.execute("INSERT INTO teacher_credentials(teacher_id, password_hash, salt) VALUES(?,?,?)",
+                        (teacher_id, digest, salt))
+        db.transaction(_do)
+        return {"teacher_id": teacher_id, "name": name}
+    if action == "teachers.update":
+        teacher_id = str(payload.get("teacher_id") or "")
+        if not db.query_one("SELECT * FROM teachers WHERE teacher_id=?", (teacher_id,)):
+            raise _err(2002, "教师不存在", "teacher_id")
+        if "name" in payload and payload["name"] is not None:
+            db.execute("UPDATE teachers SET name=? WHERE teacher_id=?",
+                       (str(payload["name"]).strip(), teacher_id))
+            db.commit()
+        return dict(db.query_one("SELECT * FROM teachers WHERE teacher_id=?", (teacher_id,)))
+    if action == "teachers.reset_password":
+        teacher_id = str(payload.get("teacher_id") or "")
+        new_password = str(payload.get("new_password") or "")
+        if len(new_password) < 4:
+            raise _err(2001, "字段 new_password 校验失败：长度至少 4 位", "new_password")
+        if not db.query_one("SELECT 1 FROM teachers WHERE teacher_id=?", (teacher_id,)):
+            raise _err(2002, "教师不存在", "teacher_id")
+        salt, digest = hash_password(new_password)
+        db.execute("UPDATE teacher_credentials SET password_hash=?, salt=? WHERE teacher_id=?",
+                   (digest, salt, teacher_id))
+        db.commit()
+        return {"teacher_id": teacher_id, "reset": True}
+    if action == "teachers.delete":
+        teacher_id = str(payload.get("teacher_id") or "")
+        if teacher_id == PRESET_TEACHER_ID:
+            raise _err(2001, "预置教师不可删除", "teacher_id")
+        db.execute("DELETE FROM teacher_availability WHERE teacher_id=?", (teacher_id,))
+        db.execute("DELETE FROM teacher_credentials WHERE teacher_id=?", (teacher_id,))
+        db.execute("DELETE FROM teachers WHERE teacher_id=?", (teacher_id,))
+        db.commit()
+        return {"teacher_id": teacher_id}
+    if action == "teachers.availability.set":
+        return set_teacher_availability(db, payload)
     raise _err(2001, f"未注册的动作: {action}", "action")
 
 
@@ -1178,6 +1447,7 @@ RESOURCE_REGISTRY = (
     "appointments.pending", "appointments.by_date", "blocks.list",
     "warnings.list", "replies.list", "export.classes", "export.rows",
     "rooms.list", "teachers.list", "appointments.events", "stats.appointments",
+    "waitlist.list", "teacher_calendar",
 )
 ACTION_REGISTRY = (
     "appointments.schedule", "appointments.complete", "blocks.set",
@@ -1185,4 +1455,7 @@ ACTION_REGISTRY = (
     "students.set_history", "students.reset_password",
     "appointments.reschedule", "appointments.cancel", "appointments.no_show",
     "rooms.create", "rooms.update", "rooms.delete", "blocks.batch_set",
+    "waitlist.join", "waitlist.cancel",
+    "teachers.create", "teachers.update", "teachers.reset_password",
+    "teachers.delete", "teachers.availability.set",
 )

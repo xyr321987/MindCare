@@ -8,7 +8,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, Optional
 
-from ..models import Appointment, ExportRow, ReplyEntry, WarningRecord
+from ..models import Appointment, ExportRow, ReplyEntry, WaitlistEntry, WarningRecord
 
 
 class AppointmentAdapter(ABC):
@@ -81,6 +81,52 @@ class SchedulingAdapter(ABC):
         """某预约的操作日志（取消/改期/爽约等留痕）。"""
 
 
+class WaitlistAdapter(ABC):
+    """候补队列（学生锚定时段，取消/爽约后自动递补）。"""
+
+    @abstractmethod
+    def list(self, params: Optional[dict] = None) -> List[WaitlistEntry]:
+        """候补条目（可按 year/month/day/status 筛选）。"""
+
+    @abstractmethod
+    def join(self, student_id: str, year: str, month: str, day: str,
+             time_text: str, teacher_id: Optional[str],
+             room_id: Optional[str], reason: Optional[str]) -> dict:
+        """把学生加入某时段候补（该时段须已被预约）。"""
+
+    @abstractmethod
+    def cancel(self, wait_id: str) -> dict:
+        """退候补。"""
+
+
+class TeacherAdminAdapter(ABC):
+    """教师账号管理 + 个人日历。"""
+
+    @abstractmethod
+    def create(self, name: str, password: str) -> dict:
+        """新建教师（含初始密码）。"""
+
+    @abstractmethod
+    def update(self, teacher_id: str, name: str) -> dict:
+        """重命名教师。"""
+
+    @abstractmethod
+    def reset_password(self, teacher_id: str, new_password: str) -> dict:
+        """重置教师密码。"""
+
+    @abstractmethod
+    def delete(self, teacher_id: str) -> dict:
+        """删除教师。"""
+
+    @abstractmethod
+    def set_availability(self, teacher_id: str, items: List[dict]) -> dict:
+        """批量设定周期可用性（items=[{weekday, period, active}]）。"""
+
+    @abstractmethod
+    def calendar(self, teacher_id: str, start: str, end: str) -> dict:
+        """教师区间内的预约/停诊/周期可用性。"""
+
+
 class WarningAdapter(ABC):
     """连续沮丧不求助预警（满 3 次连续触发；老师约谈后消除）。"""
 
@@ -137,12 +183,14 @@ class BlockAdapter(ABC):
 
     @abstractmethod
     def set(self, year: int, month: int, day: int, period: int,
-            active: bool, reason: Optional[str] = None) -> dict:
-        """设定/取消某格不可预约。"""
+            active: bool, reason: Optional[str] = None,
+            teacher_id: Optional[str] = None) -> dict:
+        """设定/取消某格不可预约（teacher_id 可指定教师个人停诊）。"""
 
     @abstractmethod
     def batch_set(self, items: List[dict], active: bool,
-                  reason: Optional[str] = None) -> dict:
+                  reason: Optional[str] = None,
+                  teacher_id: Optional[str] = None) -> dict:
         """批量设定/关闭多个时段（items=[{year,month,day,period}, ...]）。"""
 
 
