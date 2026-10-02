@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""「见山」学生端首页（第一轮 UI 还原：整体布局 + 视觉基调）。
+"""「见山」学生端首页（第一/二轮 UI 还原：整体布局 + SVG 插画资源）。
 
 结构（自上而下）:
     ① 顶部欢迎区：左侧欢迎文字，右侧山峦插画
@@ -11,14 +11,16 @@
 * 本页**不产生中文界面字面量**，全部从 `COPY` 取（见 `desktop_common/copy.py`）。
 * 本页**不发网络请求**：欢迎语 / 最近活动由主窗口注入（`set_profile` / `set_activity`），
   小纸条文案从文案表轮换，保证主线程零传输（UI约定 §3）。
-* 插画用 `QPainter` 本地绘制（无外部图片资源、无远程链接），风格统一为简约线稿 + 柔和色块。
+* 插画用**本地 SVG 资源**（`assets/`），经 `QSvgRenderer` 渲染，风格统一、便于替换维护。
 """
 from __future__ import annotations
 
+from pathlib import Path
 from typing import List, Optional
 
 from PySide6.QtCore import Qt, QRectF, Signal
-from PySide6.QtGui import QColor, QPainter, QPainterPath
+from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -31,110 +33,76 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from desktop_common import theme
 from desktop_common.copy import COPY
 from desktop_common.widgets import Card, make_hint, make_label
 
-__all__ = ["HomePage"]
+__all__ = ["HomePage", "svg_pixmap"]
+
+#: 本地 SVG 插画资源目录（`student_desktop/assets/`）
+ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 
 #: 小纸条轮换文案键（顺序即轮换顺序）
 _NOTE_KEYS = ("home.note.1", "home.note.2", "home.note.3", "home.note.4")
 
-#: 四张功能卡片的配色（`tone` 动态属性 → 主题 QSS；`accent` 是插画主色）
+#: 四张功能卡片：`tone` 动态属性 → 主题 QSS；`art` 是 SVG 插画资源
 _CARD_SPECS = (
     {"key": "questionnaire", "title": "c.tab.questionnaire", "desc": "home.card.questionnaire.desc",
-     "accent": "#6E8B7E"},
+     "art": "card_weather.svg"},
     {"key": "treehole", "title": "s.treehole.tab.title", "desc": "home.card.treehole.desc",
-     "accent": "#8A7A62"},
+     "art": "card_treehole.svg"},
     {"key": "appointment", "title": "c.tab.appointment", "desc": "home.card.appointment.desc",
-     "accent": "#355B4C"},
+     "art": "card_calendar.svg"},
     {"key": "profile", "title": "c.tab.profile", "desc": "home.card.profile.desc",
-     "accent": "#7E8A82"},
+     "art": "card_diary.svg"},
 )
 
 
-# --------------------------------------------------------------------------- 插画
+# --------------------------------------------------------------------------- SVG 工具
 
 
-class _MountainScene(QWidget):
-    """简约山峦插画：太阳 + 云朵 + 两层山峰（QPainter 手绘，柔和色块）。"""
+def svg_pixmap(name: str, width: int, height: int) -> QPixmap:
+    """把 `assets/` 下的 SVG 渲染成透明底 `QPixmap`（文件缺失时返回空位图，不抛异常）。"""
+    path = ASSETS_DIR / name
+    pixmap = QPixmap(width, height)
+    pixmap.fill(Qt.transparent)
+    if not path.exists():
+        return pixmap
+    renderer = QSvgRenderer(str(path))
+    if not renderer.isValid():
+        return pixmap
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+    renderer.render(painter, QRectF(0, 0, width, height))
+    painter.end()
+    return pixmap
 
-    def __init__(self, *, accent: str = "#355B4C", far: str = "#7E9A8E",
-                 sun: str = "#E9C98F", cloud: str = "#FFFFFF",
+
+class _SvgArt(QWidget):
+    """按控件尺寸等比缩放渲染一张 SVG 插画（本地资源，透明底）。"""
+
+    def __init__(self, name: str, *, min_height: int = 88,
                  parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self._accent = QColor(accent)
-        self._far = QColor(far)
-        self._sun = QColor(sun)
-        self._cloud = QColor(cloud)
-        self.setMinimumSize(140, 96)
+        self._name = name
+        path = ASSETS_DIR / name
+        self._renderer = QSvgRenderer(str(path)) if path.exists() else None
+        self.setMinimumSize(120, min_height)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
     def paintEvent(self, _event) -> None:  # noqa: N802
+        if self._renderer is None or not self._renderer.isValid():
+            return
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-        w, h = self.width(), self.height()
-        painter.setPen(Qt.NoPen)
-
-        # 太阳（右上）
-        r = w * 0.14
-        painter.setBrush(self._sun)
-        painter.drawEllipse(QRectF(w * 0.72, h * 0.06, r, r))
-
-        # 云朵（左上，三枚椭圆叠加）
-        painter.setBrush(self._cloud)
-        painter.drawEllipse(QRectF(w * 0.06, h * 0.16, w * 0.20, h * 0.16))
-        painter.drawEllipse(QRectF(w * 0.14, h * 0.08, w * 0.16, h * 0.20))
-        painter.drawEllipse(QRectF(w * 0.20, h * 0.16, w * 0.18, h * 0.14))
-
-        # 远山（浅）
-        painter.setBrush(self._far)
-        far_path = QPainterPath()
-        far_path.moveTo(0, h)
-        far_path.lineTo(w * 0.18, h * 0.42)
-        far_path.lineTo(w * 0.36, h * 0.66)
-        far_path.lineTo(w * 0.55, h * 0.40)
-        far_path.lineTo(w * 0.74, h * 0.72)
-        far_path.lineTo(w, h * 0.55)
-        far_path.lineTo(w, h)
-        far_path.closeSubpath()
-        painter.drawPath(far_path)
-
-        # 近山（深，主色）
-        painter.setBrush(self._accent)
-        near_path = QPainterPath()
-        near_path.moveTo(0, h)
-        near_path.lineTo(w * 0.28, h * 0.58)
-        near_path.lineTo(w * 0.52, h * 0.82)
-        near_path.lineTo(w * 0.76, h * 0.60)
-        near_path.lineTo(w, h * 0.78)
-        near_path.lineTo(w, h)
-        near_path.closeSubpath()
-        painter.drawPath(near_path)
-
-
-class _MountainMark(QWidget):
-    """极简山峰线稿（底部提示区的小装饰）。"""
-
-    def __init__(self, parent: Optional[QWidget] = None) -> None:
-        super().__init__(parent)
-        self.setFixedSize(44, 26)
-
-    def paintEvent(self, _event) -> None:  # noqa: N802
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        pen = painter.pen()
-        pen.setColor(QColor(theme.BRAND))
-        pen.setWidthF(1.6)
-        painter.setPen(pen)
-        painter.setBrush(Qt.NoBrush)
-        path = QPainterPath()
-        path.moveTo(4, self.height() - 3)
-        path.lineTo(self.width() * 0.36, 6)
-        path.lineTo(self.width() * 0.52, self.height() * 0.55)
-        path.lineTo(self.width() * 0.66, self.height() * 0.30)
-        path.lineTo(self.width() - 4, self.height() - 3)
-        painter.drawPath(path)
+        size = self._renderer.defaultSize()
+        if size.width() > 0 and size.height() > 0:
+            scale = min(self.width() / size.width(), self.height() / size.height())
+            w = size.width() * scale
+            h = size.height() * scale
+            x = (self.width() - w) / 2.0
+            y = (self.height() - h) / 2.0
+            self._renderer.render(painter, QRectF(x, y, w, h))
+        painter.end()
 
 
 # --------------------------------------------------------------------------- 功能卡片
@@ -145,7 +113,7 @@ class _FeatureCard(QFrame):
 
     clicked = Signal(str)
 
-    def __init__(self, key: str, title: str, desc: str, accent: str,
+    def __init__(self, key: str, title: str, desc: str, art: str,
                  parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setObjectName("HomeFeatureCard")
@@ -154,11 +122,10 @@ class _FeatureCard(QFrame):
         self.setCursor(Qt.PointingHandCursor)
 
         inner = QVBoxLayout(self)
-        inner.setContentsMargins(18, 18, 18, 18)
+        inner.setContentsMargins(20, 20, 20, 20)
         inner.setSpacing(10)
 
-        self.art = _MountainScene(accent=accent, far="#C4CFC8", sun="#E9C98F")
-        self.art.setMinimumHeight(90)
+        self.art = _SvgArt(art, min_height=96)
         inner.addWidget(self.art, 1)
 
         self.title_label = make_label(title, "HomeCardTitle", word_wrap=False)
@@ -210,8 +177,8 @@ class HomePage(QWidget):
         content = QWidget()
         content.setObjectName("HomeScrollContent")
         self._content_layout = QVBoxLayout(content)
-        self._content_layout.setContentsMargins(32, 28, 32, 28)
-        self._content_layout.setSpacing(20)
+        self._content_layout.setContentsMargins(40, 36, 40, 28)
+        self._content_layout.setSpacing(24)
         self.scroll.setWidget(content)
 
         self._build_welcome()
@@ -229,7 +196,7 @@ class HomePage(QWidget):
         row.setSpacing(24)
 
         left = QVBoxLayout()
-        left.setSpacing(8)
+        left.setSpacing(10)
         left.addStretch(1)
         self.hello_label = make_label("", "HomeHello", word_wrap=False)
         left.addWidget(self.hello_label)
@@ -238,10 +205,8 @@ class HomePage(QWidget):
         left.addStretch(1)
         row.addLayout(left, 3)
 
-        self.welcome_art = _MountainScene(
-            accent=theme.BRAND, far="#7E9A8E", sun="#E9C98F")
-        self.welcome_art.setMinimumHeight(150)
-        self.welcome_art.setMaximumWidth(460)
+        self.welcome_art = _SvgArt("welcome_scene.svg", min_height=170)
+        self.welcome_art.setMaximumWidth(500)
         row.addWidget(self.welcome_art, 2)
 
         self._content_layout.addLayout(row)
@@ -254,7 +219,7 @@ class HomePage(QWidget):
         for spec in _CARD_SPECS:
             card = _FeatureCard(
                 spec["key"], COPY[spec["title"]], COPY[spec["desc"]],
-                spec["accent"])
+                spec["art"])
             card.clicked.connect(self.navigate.emit)
             self._cards.append(card)
         self._content_layout.addLayout(self._cards_grid)
@@ -267,7 +232,7 @@ class HomePage(QWidget):
         self.activity_card = Card()
         self.activity_card.setObjectName("HomeActivity")
         activity_inner = self.activity_card.body_layout()
-        activity_inner.setContentsMargins(20, 20, 20, 20)
+        activity_inner.setContentsMargins(22, 22, 22, 22)
         activity_inner.setSpacing(10)
         self.activity_title = make_label(COPY["home.activity.title"], "HomeSectionTitle")
         activity_inner.addWidget(self.activity_title)
@@ -283,8 +248,8 @@ class HomePage(QWidget):
         self.note_card = Card()
         self.note_card.setObjectName("HomeNote")
         note_inner = self.note_card.body_layout()
-        note_inner.setContentsMargins(24, 24, 24, 24)
-        note_inner.setSpacing(12)
+        note_inner.setContentsMargins(26, 26, 26, 26)
+        note_inner.setSpacing(14)
         note_head = QHBoxLayout()
         note_head.addWidget(make_label(COPY["home.note.title"], "HomeNoteTitle", word_wrap=False))
         note_head.addStretch(1)
@@ -309,7 +274,11 @@ class HomePage(QWidget):
     def _build_footer(self) -> None:
         footer = QHBoxLayout()
         footer.addStretch(1)
-        footer.addWidget(_MountainMark())
+        mark = QLabel(self)
+        mark.setObjectName("HomeFooterMark")
+        mark.setPixmap(svg_pixmap("footer_mark.svg", 44, 26))
+        mark.setFixedSize(44, 26)
+        footer.addWidget(mark)
         footer.addSpacing(8)
         footer.addWidget(make_label(COPY["home.footer.line"], "HomeFooter"))
         footer.addStretch(1)

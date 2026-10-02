@@ -60,7 +60,7 @@ from ..ui.profile import ProfileTab
 from ..ui.pages import AppointmentPage, NoticePage
 from ..ui.questionnaire import QuestionnaireTab
 from ..ui.treehole import TreeholeTab
-from ..ui.home import HomePage
+from ..ui.home import HomePage, svg_pixmap
 
 __all__ = [
     "LoginView", "StudentMainWindow", "AboutTab", "build_client", "main",
@@ -325,8 +325,16 @@ class SideNav(QWidget):
         nav.setSpacing(6)
 
         # ---- 品牌 ----
+        brand_row = QHBoxLayout()
+        brand_row.setSpacing(10)
+        self.brand_mark = QLabel(self.nav_bar)
+        self.brand_mark.setPixmap(svg_pixmap("brand_mark.svg", 30, 30))
+        self.brand_mark.setFixedSize(30, 30)
+        brand_row.addWidget(self.brand_mark)
         self.brand_label = make_label(COPY["home.nav.brand"], "NavBrand", word_wrap=False)
-        nav.addWidget(self.brand_label)
+        brand_row.addWidget(self.brand_label)
+        brand_row.addStretch(1)
+        nav.addLayout(brand_row)
         self.slogan_label = make_label(COPY["home.nav.slogan"], "NavBrandSlogan", word_wrap=False)
         nav.addWidget(self.slogan_label)
         nav.addSpacing(22)
