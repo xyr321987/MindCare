@@ -25,6 +25,18 @@ MOODS = ("happy", "plain", "down")
 CAUSES = ("study", "relationship", "family")
 RESULT_SCENES = ("happy_end", "plain_tips", "help_sent", "self_care")
 
+#: `result_scene`（回复库标签）→ `tips` 表默认 scene 键。
+#: `happy_end` / `help_sent` 没有默认小贴士，只有教师回复库能覆盖。
+_RESULT_TO_TIPS_SCENE = {
+    "plain_tips": "plain",
+    "self_care": "down",
+}
+#: `tips` 表 scene 键 → `result_scene`（`GET /tips?scene=plain|down` 反向映射）。
+_TIPS_SCENE_TO_RESULT = {
+    "plain": "plain_tips",
+    "down": "self_care",
+}
+
 #: 分诊参数（契约 §2.9 params）
 WINDOW_N = 3
 THRESHOLD_K = 2
@@ -286,26 +298,35 @@ def _result_scene(data: dict) -> str:
     return "help_sent" if data["request_help"] else "self_care"
 
 
-def _tip_for_scene(db: Database, scene: str) -> dict:
-    """tips 合并（决策 6）：教师启用回复 > tips 表默认。"""
+def _tip_for_scene(db: Database, result_scene: str) -> dict:
+    """tips 合并（决策 6 / R18）：教师启用回复（按 `result_scene` 打标）> tips 表默认。
+
+    回复库（`replies`）的 `scenes` 与教师端 `RESULT_SCENES` 对齐（`happy_end` /
+    `plain_tips` / `help_sent` / `self_care`）；默认文案（`tips` 表）用
+    `plain` / `down` 两个键。两者是**两套枚举**：这里先按 `result_scene` 查回复，
+    命中则覆盖；否则把 `result_scene` 映射回 tips 键取默认。
+    """
     rows = db.query(
         "SELECT * FROM replies WHERE enabled=1 AND scenes LIKE ? ORDER BY updated_ts DESC LIMIT 1",
-        (f'%"{scene}"%',),
+        (f'%"{result_scene}"%',),
     )
     if rows:
-        return {"scene": scene, "text": rows[0]["text"], "treehole_entry": False}
-    t = db.query_one("SELECT * FROM tips WHERE scene=?", (scene,))
-    if t:
-        return {"scene": scene, "text": t["text"], "treehole_entry": bool(t["treehole_entry"])}
-    return {"scene": scene, "text": "", "treehole_entry": False}
+        return {"scene": result_scene, "text": rows[0]["text"], "treehole_entry": False}
+    tip_key = _RESULT_TO_TIPS_SCENE.get(result_scene)
+    if tip_key:
+        t = db.query_one("SELECT * FROM tips WHERE scene=?", (tip_key,))
+        if t:
+            return {"scene": result_scene, "text": t["text"],
+                    "treehole_entry": bool(t["treehole_entry"])}
+    return {"scene": result_scene, "text": "", "treehole_entry": False}
 
 
 def _submission_result(db: Database, row: dict) -> dict:
     scene = _result_scene(row)
     result = {"record_id": row["record_id"], "date": row["date"], "result_scene": scene}
-    if scene in ("plain_tips", "self_care"):
-        tip_scene = "plain" if scene == "plain_tips" else "down"
-        result["tips"] = _tip_for_scene(db, tip_scene)
+    tip = _tip_for_scene(db, scene)
+    if tip["text"]:
+        result["tips"] = tip
     return result
 
 
@@ -410,7 +431,8 @@ def my_treehole(db: Database, student_id: str, date: str) -> dict:
 def tips(db: Database, scene: str) -> dict:
     if scene not in ("plain", "down"):
         raise _err(2001, "字段 scene 校验失败：只能是 plain/down", "scene")
-    return _tip_for_scene(db, scene)
+    result_scene = _TIPS_SCENE_TO_RESULT.get(scene)
+    return _tip_for_scene(db, result_scene)
 
 
 # =========================================================================== 预约（学生）

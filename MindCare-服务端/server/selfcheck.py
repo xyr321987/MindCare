@@ -167,11 +167,18 @@ def main() -> int:
                "payload": {"warning_id": act[0]["warning_id"], "note": "已约谈"}})
     ok(dis["status"] == "dismissed", "dismiss → 留痕 dismissed")
 
-    # 17 回复库 + tips 合并
+    # 17 回复库 + tips 合并（问题 6）：教师按 result_scene 建回复 → 学生提交后看到回复
     call("POST", "/db/write", token=tea_token, body={"action": "replies.create",
-         "payload": {"text": "自定义：先深呼吸十次。", "scenes": ["down"]}})
+         "payload": {"text": "自定义：先深呼吸十次。", "scenes": ["self_care"]}})
+    sub_care = call("POST", "/questionnaire/submissions", token=stu_token,
+                    body={"record_id": "rec_reply_probe", "mood": "down", "plain_note": None,
+                          "cause_category": "study", "detail": "有点低落",
+                          "request_help": False, "consent_share": False, "consent_ts": None})
+    ok(sub_care.get("result_scene") == "self_care"
+       and sub_care.get("tips", {}).get("text") == "自定义：先深呼吸十次。",
+       "教师按 self_care 建回复 → 学生 down 不求助提交后看到自定义回复")
     tip = call("GET", "/tips", query={"scene": "down"}, token=stu_token)
-    ok(tip["text"] == "自定义：先深呼吸十次。", "老师自定义回复覆盖默认 tips")
+    ok(tip["text"] == "自定义：先深呼吸十次。", "GET /tips?scene=down 反向映射到 self_care 回复")
 
     # 18 导出零正文
     exp = call("POST", "/db/read", token=tea_token, body={"action": None, "resource": "export.rows",

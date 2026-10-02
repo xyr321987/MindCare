@@ -17,8 +17,8 @@ import time
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-PKG1 = r"C:\Users\admin\Desktop\文件\MindCare-前端交付包(1)"
-PKG2 = r"C:\Users\admin\Desktop\文件\MindCare-教师端-交付(2)"
+PKG1 = os.path.join(HERE, "..", "MindCare-前端交付包(1)")
+PKG2 = os.path.join(HERE, "..", "MindCare-教师端-交付(2)")
 
 for p in (PKG2, PKG1):  # PKG1 最后插入 → 排最前；desktop_common 用学生端完整版（含预约方法）
     if p not in sys.path:
@@ -180,11 +180,18 @@ def run_cases(base: str) -> None:
     slots = sc2.list_blocks()
     check("2026-10-07#3" in (slots.get("slots") or []), "⑫ 教师设红框→学生端可读")
 
-    # 13 回复 → 学生 tips 覆盖
+    # 13 回复 → 学生 tips 覆盖（教师按 result_scene=self_care 建回复，学生 down 不求助提交后可见）
     rep = HttpReplyAdapter(gw)
-    rep.create("自定义：先深呼吸十次。", ["down"])
+    rep.create("自定义：先深呼吸十次。", ["self_care"])
+    sub_care = sc2.submit_questionnaire({"record_id": "rec_reply_probe", "mood": "down",
+                                         "plain_note": None, "cause_category": "study",
+                                         "detail": "有点低落", "request_help": False,
+                                         "consent_share": False, "consent_ts": None})
+    check(sub_care.get("result_scene") == "self_care"
+          and sub_care.get("tips", {}).get("text") == "自定义：先深呼吸十次。",
+          "⑬ 老师按 self_care 建回复 → 学生提交后看到回复")
     tip = sc2.tips("down")
-    check(tip["text"] == "自定义：先深呼吸十次。", "⑬ 老师自定义回复覆盖学生 tips")
+    check(tip["text"] == "自定义：先深呼吸十次。", "⑬ GET /tips?scene=down 反向映射到回复")
 
     # 14 导出零正文
     exp = HttpExportAdapter(gw)
