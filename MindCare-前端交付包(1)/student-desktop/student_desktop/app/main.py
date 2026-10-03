@@ -19,18 +19,23 @@ from __future__ import annotations
 
 import argparse
 import sys
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from PySide6.QtCore import Qt, QSize, QThreadPool, QTimer, Signal
-from PySide6.QtGui import QIcon
+from PySide6.QtCore import Qt, QRectF, QSize, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QColor, QIcon, QLinearGradient, QPainter
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
+    QFrame,
+    QGraphicsDropShadowEffect,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QMainWindow,
     QPushButton,
+    QScrollArea,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -83,6 +88,9 @@ ENGINE_NOT_READY_SUBMIT_KEY = "c.engine.notReady.action"
 #: 与界面文案无关，因此可以写成常量；面向用户的提示文字仍全部来自文案表。
 STUDENT_NO_PREFIX = "stu_"
 
+#: 本地 SVG 插画资源目录（登录页水墨山水背景 / 品牌 Logo）
+_ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
+
 
 def normalize_student_no(raw: str) -> str:
     """把登录框里的输入规范成「号次」形态（v1.1 注册制）。
@@ -102,7 +110,7 @@ def build_client(server: str, *, instrument: bool = True, stats=None) -> ApiClie
     from . import worker as worker_module
 
     counter = stats if stats is not None else worker_module.STATS
-    client = ApiClient(server)
+    client = ApiClient(server, role="student")
     if instrument:
         original = client._do_http
 
@@ -132,17 +140,66 @@ class LoginView(QWidget):
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setObjectName("LoginView")
+
+        # 水墨山水背景（paintEvent 里绘制；文件缺失则只画天空渐变，不崩）
+        self._scene = QSvgRenderer(str(_ASSETS_DIR / "login_scene.svg"))
+        if not self._scene.isValid():
+            self._scene = None
+
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(40, 40, 40, 40)
-        outer.setSpacing(16)
+        outer.setContentsMargins(48, 32, 48, 36)
+        outer.setSpacing(0)
+
+        # 品牌（左上）：Logo + 见山 / MindCare + 平台标语
+        outer.addLayout(self._build_brand())
+
+        # 中部：居中磨砂玻璃卡片（放滚动区，小窗口可滚动、不遮挡不溢出）
+        outer.addStretch(1)
+        self._card_scroll = self._build_card_scroll()
+        outer.addWidget(self._card_scroll, 1)
         outer.addStretch(1)
 
-        self.card = Card()
-        self.card.add(make_title(COPY["c.login.title"]))
-        self.card.add(make_hint(COPY["c.login.subtitle"]))
-        self.card.add(make_hint(COPY["c.login.demoNote"]))
+        self._register_mode = False
 
-        self.card.add(make_label(COPY["c.login.studentNo"], "Heading"))
+    # ---------------------------------------------------------------- 视觉构建
+    def _build_brand(self) -> QHBoxLayout:
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        logo = QLabel(self)
+        logo.setPixmap(svg_pixmap("login_brand.svg", 34, 34))
+        logo.setFixedSize(34, 34)
+        row.addWidget(logo)
+
+        name_col = QVBoxLayout()
+        name_col.setSpacing(0)
+        name_row = QHBoxLayout()
+        name_row.setSpacing(6)
+        name_row.addWidget(make_label(COPY["home.nav.brand"], "LoginBrand", word_wrap=False))
+        name_row.addWidget(make_label(COPY["c.login.brand"], "LoginBrandEn", word_wrap=False))
+        name_row.addStretch(1)
+        name_col.addLayout(name_row)
+        name_col.addWidget(make_label(COPY["c.login.brand.tagline"], "LoginBrandTagline", word_wrap=False))
+        row.addLayout(name_col)
+        row.addStretch(1)
+        return row
+
+    def _build_card(self) -> Card:
+        card = Card(padding=20, spacing=6)
+        card.setObjectName("LoginCard")
+        card.setFixedWidth(430)
+
+        # 柔和阴影（磨砂玻璃悬浮感）
+        shadow = QGraphicsDropShadowEffect(card)
+        shadow.setBlurRadius(42)
+        shadow.setColor(QColor(53, 91, 76, 55))
+        shadow.setOffset(0, 10)
+        card.setGraphicsEffect(shadow)
+
+        card.add(make_title(COPY["c.login.title"]))
+        card.add(make_hint(COPY["c.login.subtitle"]))
+        card.add(make_hint(COPY["c.login.demoNote"]))
+
+        card.add(make_label(COPY["c.login.studentNo"], "Heading"))
         self.student_input = QLineEdit()
         self.student_input.setObjectName("StudentNoInput")
         self.student_input.setFocusPolicy(Qt.StrongFocus)
@@ -150,8 +207,8 @@ class LoginView(QWidget):
         self.student_format_hint = make_hint(COPY["c.login.studentNo.format"])
         self.student_format_hint.setObjectName("LoginFormatHint")
         self.student_input.setToolTip(COPY["c.login.studentNo.format"])
-        self.card.add(self.student_input)
-        self.card.add(self.student_format_hint)
+        card.add(self.student_input)
+        card.add(self.student_format_hint)
 
         # 注册专用字段（默认隐藏）
         self.class_label = make_label(COPY["c.login.className"], "Heading")
@@ -167,42 +224,85 @@ class LoginView(QWidget):
         self._register_widgets = [self.class_label, self.class_input,
                                   self.name_label, self.name_input]
         for widget in self._register_widgets:
-            self.card.add(widget)
+            card.add(widget)
             widget.setVisible(False)
 
-        self.card.add(make_label(COPY["c.login.password"], "Heading"))
+        card.add(make_label(COPY["c.login.password"], "Heading"))
         self.password_input = QLineEdit()
         self.password_input.setObjectName("StudentPasswordInput")
         self.password_input.setFocusPolicy(Qt.StrongFocus)
         self.password_input.setEchoMode(QLineEdit.Password)
         self.password_input.setPlaceholderText(COPY["c.login.password"])
-        self.card.add(self.password_input)
+        card.add(self.password_input)
 
         self.error_label = make_error("")
-        self.card.add(self.error_label)
+        card.add(self.error_label)
 
         self.enter_button = make_primary_button(COPY["c.login.action.submit"])
         self.enter_button.setObjectName("LoginButton")
         self.enter_button.clicked.connect(self._on_enter)
-        self.card.add(self.enter_button)
+        card.add(self.enter_button)
 
         self.toggle_button = make_ghost_button(COPY["c.login.toggle.register"])
         self.toggle_button.setObjectName("ToggleRegisterButton")
         self.toggle_button.clicked.connect(self._toggle_mode)
-        self.card.add(self.toggle_button)
+        card.add(self.toggle_button)
 
-        self.card.add(divider())
-        self.card.add(make_hint(COPY["c.hotline.footer"]))
-        self.card.add(hotline_label(COPY.hotline_line()))
+        card.add(divider())
+        card.add(make_hint(COPY["c.hotline.footer"]))
+        card.add(hotline_label(COPY.hotline_line()))
 
+        return card
+
+    def _build_card_scroll(self) -> QScrollArea:
+        """把卡片放进透明滚动区：窗口够高时居中、窗口过矮时纵向滚动不溢出。"""
+        scroll = QScrollArea(self)
+        scroll.setObjectName("LoginScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        content = QWidget()
+        content.setObjectName("LoginScrollContent")
+        v = QVBoxLayout(content)
+        v.setContentsMargins(0, 4, 0, 4)
+        v.setSpacing(0)
+        v.addStretch(1)
+
+        self.card = self._build_card()
         holder = QHBoxLayout()
         holder.addStretch(1)
-        holder.addWidget(self.card, 3)
+        holder.addWidget(self.card)
         holder.addStretch(1)
-        outer.addLayout(holder)
-        outer.addStretch(2)
+        v.addLayout(holder)
+        v.addStretch(1)
 
-        self._register_mode = False
+        scroll.setWidget(content)
+        return scroll
+
+    def paintEvent(self, event) -> None:  # noqa: N802
+        """全屏背景：天空渐变 + 水墨山水场景（cover、底部对齐，适配任意窗口比例）。"""
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        width, height = self.width(), self.height()
+
+        gradient = QLinearGradient(0, 0, 0, height)
+        gradient.setColorAt(0.0, QColor("#CFE2DD"))
+        gradient.setColorAt(0.55, QColor("#D7E6E4"))
+        gradient.setColorAt(1.0, QColor("#F6F3EB"))
+        painter.fillRect(self.rect(), gradient)
+
+        if self._scene is not None:
+            size = self._scene.defaultSize()
+            sw, sh = size.width(), size.height()
+            if sw > 0 and sh > 0:
+                scale = max(width / sw, height / sh)
+                rw, rh = sw * scale, sh * scale
+                x = (width - rw) / 2.0
+                y = height - rh
+                self._scene.render(painter, QRectF(x, y, rw, rh))
+        painter.end()
+        super().paintEvent(event)
 
     # -- 模式切换 -----------------------------------------------------------
     def _toggle_mode(self) -> None:
@@ -378,6 +478,8 @@ class SideNav(QWidget):
         user_text.addWidget(self.user_class)
         user_lay.addLayout(user_text)
         user_lay.addStretch(1)
+        self.user_arrow = make_label("›", "NavUserArrow", word_wrap=False)
+        user_lay.addWidget(self.user_arrow)
         self._user_card = user_card
         self._bottom_layout.addWidget(self._user_card)
 
@@ -605,6 +707,8 @@ class StudentMainWindow(QMainWindow):
         self.questionnaire_page.submit_requested.connect(self._submit_questionnaire)
         self.questionnaire_page.treehole_deeplink.connect(self.open_treehole_editor)
         self.questionnaire_page.restart_requested.connect(self.questionnaire_page.reset)
+        self.questionnaire_page.appointment_deeplink.connect(
+            lambda: self._on_home_navigate("appointment"))
 
         self.treehole_page.dates_requested.connect(self._load_treehole_dates)
         self.treehole_page.entries_requested.connect(self._load_treehole_entries)
@@ -772,7 +876,7 @@ class StudentMainWindow(QMainWindow):
         self.treehole_page.show_error("")
         self.treehole_page.set_entries([])
         self.treehole_page.set_dates([])
-        self.profile_page.set_dates([])
+        self.profile_page.reset()
         self.home_page.set_profile({})
         self.tabs.set_user({})
         # 清空登录框：登录成功后 `student_input` 会被填成 `profile.id`（`stu_` 前缀），

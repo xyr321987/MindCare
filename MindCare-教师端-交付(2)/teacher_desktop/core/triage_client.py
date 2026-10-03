@@ -18,7 +18,7 @@ class TriageClient:
 
     def __init__(self, server: str = "http://127.0.0.1:8080") -> None:
         self.profile: Optional[dict] = None
-        self._http = ApiClient(server)
+        self._http = ApiClient(server, role="teacher")
 
     # ---------------------------------------------------------------- 登录
     def login(self, work_id: str, password: str) -> dict:

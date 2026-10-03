@@ -103,12 +103,14 @@ class TeacherAdminAdapter(ABC):
     """教师账号管理 + 个人日历。"""
 
     @abstractmethod
-    def create(self, name: str, password: str) -> dict:
-        """新建教师（含初始密码）。"""
+    def create(self, name: str, password: str,
+               teacher_no: Optional[str] = None) -> dict:
+        """新建教师（含初始密码；工号可选，留空自动生成）。"""
 
     @abstractmethod
-    def update(self, teacher_id: str, name: str) -> dict:
-        """重命名教师。"""
+    def update(self, teacher_id: str, name: Optional[str] = None,
+               teacher_no: Optional[str] = None) -> dict:
+        """编辑教师（姓名/工号）。"""
 
     @abstractmethod
     def reset_password(self, teacher_id: str, new_password: str) -> dict:
@@ -198,8 +200,9 @@ class StudentAdminAdapter(ABC):
     """学生管理（病史标记 / 重置密码）。"""
 
     @abstractmethod
-    def set_history(self, student_id: str, has_history: bool) -> dict:
-        """标记/取消学生心理疾病史。"""
+    def set_history(self, student_id: str, has_history: bool,
+                    history_text: Optional[str] = None) -> dict:
+        """标记病史 + 记录具体病史文本（history_text 为 None 时清空）。"""
 
     @abstractmethod
     def reset_password(self, student_id: str, new_password: str) -> dict:

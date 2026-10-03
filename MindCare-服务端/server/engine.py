@@ -150,7 +150,9 @@ def login(db: Database, body: dict) -> dict:
             raise _err(1001, "密码错误", "password")
         return _issue_session(db, "student", row["student_id"])
     if role == "teacher":
-        row = db.teacher.get(raw_id)
+        row = db.teacher.get_by_no(raw_id)
+        if not row:
+            row = db.teacher.get(raw_id)  # 兼容兜底：极老数据（工号=内部 id）
         if not row:
             raise _err(2002, "教师不存在", "id")
         if not db.teacher.verify_password(row["teacher_id"], password):
@@ -195,7 +197,7 @@ def _validate_submission(body: dict) -> dict:
         raise _err(2001, "字段 mood 校验失败：必须是 happy/plain/down", "mood")
     plain_note = body.get("plain_note")
     cause_category = body.get("cause_category")
-    detail = body.get("detail")
+    detail = body.get("detail") or None
     request_help = bool(body.get("request_help"))
     consent_share = bool(body.get("consent_share"))
     consent_ts = body.get("consent_ts")
@@ -216,16 +218,12 @@ def _validate_submission(body: dict) -> dict:
         if filled:
             if not cause_category:
                 raise _err(2001, "字段 cause_category 校验失败：必填", "cause_category")
-            if not detail:
-                raise _err(2001, "字段 detail 校验失败：必须是非空字符串", "detail")
         else:
             if cause_category or detail or request_help:
                 raise _err(2001, "mood=plain 未填原因时不得携带原因/详情/求助", "mood")
     else:  # down
         if not cause_category:
             raise _err(2001, "字段 cause_category 校验失败：必填", "cause_category")
-        if not detail:
-            raise _err(2001, "字段 detail 校验失败：必须是非空字符串", "detail")
 
     if cause_category is not None and cause_category not in CAUSES:
         raise _err(2001, "字段 cause_category 校验失败：study/relationship/family", "cause_category")
@@ -475,24 +473,28 @@ def create_appointment(db: Database, student_id: str, body: dict) -> dict:
     room_id = body.get("room_id") or None
     if room_id and not db.query_one("SELECT 1 FROM rooms WHERE room_id=?", (str(room_id),)):
         raise _err(2002, "咨询室不存在", "room_id")
-    conflict = _conflict(db, slot, slot_date, str(period), teacher_id, room_id)
-    if conflict:
-        raise _err(2001, conflict, "slot")
 
-    stu = db.query_one("SELECT * FROM students WHERE student_id=?", (student_id,))
     now = sched.now_iso()
     weekday = sched.weekday_from_date(int(year), int(month), int(day))
-    db.execute(
-        "INSERT INTO appointments"
-        "(apt_id, student_id, teacher_id, room_id, name, class_name, year, month, day, period, weekday,"
-        " time_start, time_end, slot, date, share_questionnaire, share_treehole, status, created_ts, updated_ts)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        (apt_id, student_id, teacher_id, room_id, stu["name"], stu["class_name"], str(year), str(month), str(day),
-         str(period), str(weekday), sched.period_start(period), sched.period_end(period),
-         slot, slot_date, int(bool(body.get("share_questionnaire"))),
-         int(bool(body.get("share_treehole"))), "scheduled", now, now),
-    )
-    db.commit()
+
+    def _do(cur) -> None:
+        # 冲突检测与 INSERT 同一事务：全局锁串行写，消除「先查后写」的占格竞态
+        conflict = _conflict(db, slot, slot_date, str(period), teacher_id, room_id)
+        if conflict:
+            raise _err(2001, conflict, "slot")
+        stu = db.query_one("SELECT * FROM students WHERE student_id=?", (student_id,))
+        cur.execute(
+            "INSERT INTO appointments"
+            "(apt_id, student_id, teacher_id, room_id, name, class_name, year, month, day, period, weekday,"
+            " time_start, time_end, slot, date, share_questionnaire, share_treehole, status, created_ts, updated_ts)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (apt_id, student_id, teacher_id, room_id, stu["name"], stu["class_name"], str(year), str(month), str(day),
+             str(period), str(weekday), sched.period_start(period), sched.period_end(period),
+             slot, slot_date, int(bool(body.get("share_questionnaire"))),
+             int(bool(body.get("share_treehole"))), "scheduled", now, now),
+        )
+
+    db.transaction(_do)
     return {"apt_id": apt_id, "created_ts": now}
 
 
@@ -573,8 +575,39 @@ def my_appointments(db: Database, student_id: str) -> dict:
 
 
 def list_blocks(db: Database) -> dict:
-    rows = db.query("SELECT * FROM blocks WHERE active=1")
+    # 学生端只关心「全校停诊」（teacher_id 为空的全局停诊）；个人停诊由
+    # `available_teachers` 在「选老师」那一步按老师过滤，不应把整格标成不可约。
+    rows = db.query("SELECT * FROM blocks WHERE active=1 AND teacher_id IS NULL")
     return {"slots": [r["slot"] for r in rows]}
+
+
+def _upsert_block(db: Database, *, slot: str, year, month, day, period,
+                  active: bool, reason: Optional[str], operator: str,
+                  teacher_id: Optional[str]) -> dict:
+    """按 `(slot, teacher_id)` 幂等写入停诊（teacher_id=None=全校停诊，可与其他老师并存）。
+
+    全校停诊与个人停诊是**不同行**：同一格既能全校停诊，也能同时给某位老师单独停诊。
+    """
+    now = sched.now_iso()
+    if teacher_id is None:
+        existing = db.query_one(
+            "SELECT * FROM blocks WHERE slot=? AND teacher_id IS NULL", (slot,))
+    else:
+        existing = db.query_one(
+            "SELECT * FROM blocks WHERE slot=? AND teacher_id=?", (slot, teacher_id))
+    if existing:
+        blk_id = existing["blk_id"]
+        db.execute(
+            "UPDATE blocks SET active=?, reason=?, operator=?, created_ts=? WHERE blk_id=?",
+            (int(active), reason, operator, now, blk_id))
+    else:
+        blk_id = new_id("blk_")
+        db.execute(
+            "INSERT INTO blocks(blk_id, slot, year, month, day, period, active, reason, operator, teacher_id, created_ts)"
+            " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+            (blk_id, slot, str(year), str(month), str(day), str(period),
+             int(active), reason, operator, teacher_id, now))
+    return db.query_one("SELECT * FROM blocks WHERE blk_id=?", (blk_id,))
 
 
 def set_block(db: Database, operator: str, body: dict) -> dict:
@@ -589,22 +622,10 @@ def set_block(db: Database, operator: str, body: dict) -> dict:
         raise _err(2001, "字段 year/month/day/period 校验失败：必须是数字", "period")
     if sched.weekday_from_date(int(year), int(month), int(day)) < 0:
         raise _err(2001, "字段 day 校验失败：日期不存在", "day")
-    now = sched.now_iso()
-    existing = db.query_one("SELECT * FROM blocks WHERE slot=?", (slot,))
-    if existing:
-        db.execute(
-            "UPDATE blocks SET active=?, reason=?, operator=?, teacher_id=?, created_ts=? WHERE slot=?",
-            (int(active), reason, operator, teacher_id, now, slot),
-        )
-    else:
-        db.execute(
-            "INSERT INTO blocks(blk_id, slot, year, month, day, period, active, reason, operator, teacher_id, created_ts)"
-            " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-            (new_id("blk_"), slot, str(year), str(month), str(day), str(period),
-             int(active), reason, operator, teacher_id, now),
-        )
+    row = _upsert_block(db, slot=slot, year=year, month=month, day=day,
+                        period=period, active=active, reason=reason,
+                        operator=operator, teacher_id=teacher_id)
     db.commit()
-    row = db.query_one("SELECT * FROM blocks WHERE slot=?", (slot,))
     return row
 
 
@@ -771,6 +792,7 @@ def _triage_item(db: Database, st: dict) -> dict:
         "priority": priority,
         "flags": {
             "has_history": has_history,
+            "history_text": st.get("mental_history"),
             "recent_down_count": recent_down,
             "window_size": WINDOW_N,
             "pending_help": pending_help,
@@ -835,6 +857,7 @@ def student_today(db: Database, student_id: str) -> dict:
         "submission_count_today": len(subs),
         "pending_help": pending_help,
         "alert": alert,
+        "mental_history": st.get("mental_history"),
         "shared_records": q_rows,
         "shared_treehole": t_rows,
         "has_shared_records": authorized,
@@ -1292,6 +1315,9 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         return dict(db.query_one("SELECT * FROM rooms WHERE room_id=?", (room_id,)))
     if action == "rooms.delete":
         room_id = str(payload.get("room_id") or "")
+        # 先解除预约/候补对该咨询室的引用（保留历史，避免外键约束导致 500），再删除
+        db.execute("UPDATE appointments SET room_id=NULL WHERE room_id=?", (room_id,))
+        db.execute("UPDATE waitlist SET room_id=NULL WHERE room_id=?", (room_id,))
         db.execute("DELETE FROM rooms WHERE room_id=?", (room_id,))
         db.commit()
         return {"room_id": room_id}
@@ -1300,7 +1326,6 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         active = bool(payload.get("active", True))
         reason = payload.get("reason")
         teacher_id = payload.get("teacher_id")  # None=全局；有值=该教师个人停诊
-        now = sched.now_iso()
         slots = []
         for it in items:
             try:
@@ -1308,16 +1333,9 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
                                      int(it["day"]), int(it["period"]))
             except (KeyError, TypeError, ValueError):
                 continue
-            existing = db.query_one("SELECT * FROM blocks WHERE slot=?", (slot,))
-            if existing:
-                db.execute("UPDATE blocks SET active=?, reason=?, operator=?, teacher_id=?, created_ts=? WHERE slot=?",
-                           (int(active), reason, "teacher", teacher_id, now, slot))
-            else:
-                db.execute(
-                    "INSERT INTO blocks(blk_id, slot, year, month, day, period, active, reason, operator, teacher_id, created_ts)"
-                    " VALUES(?,?,?,?,?,?,?,?,?,?,?)",
-                    (new_id("blk_"), slot, str(it["year"]), str(it["month"]), str(it["day"]),
-                     str(it["period"]), int(active), reason, "teacher", teacher_id, now))
+            _upsert_block(db, slot=slot, year=it["year"], month=it["month"],
+                          day=it["day"], period=it["period"], active=active,
+                          reason=reason, operator="teacher", teacher_id=teacher_id)
             slots.append(slot)
         db.commit()
         return {"slots": slots}
@@ -1392,7 +1410,17 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         student_id = str(payload.get("student_id") or "")
         _require_student(db, student_id)
         has_history = bool(payload.get("has_history"))
-        db.execute("UPDATE students SET has_mental_history=? WHERE student_id=?", (int(has_history), student_id))
+        # 自由文本病史：只有显式带了 `history` 才写，避免把旧文本误清成 NULL
+        if "history" in payload:
+            text = payload.get("history")
+            history_text = str(text).strip() or None if text is not None else None
+            db.execute(
+                "UPDATE students SET has_mental_history=?, mental_history=? WHERE student_id=?",
+                (int(has_history), history_text, student_id))
+        else:
+            db.execute(
+                "UPDATE students SET has_mental_history=? WHERE student_id=?",
+                (int(has_history), student_id))
         db.commit()
         return dict(db.query_one("SELECT * FROM students WHERE student_id=?", (student_id,)))
     if action == "students.reset_password":
@@ -1423,18 +1451,27 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
     if action == "teachers.create":
         name = str(payload.get("name") or "").strip()
         password = str(payload.get("password") or "")
+        teacher_no = str(payload.get("teacher_no") or "").strip() or None
         if not name:
             raise _err(2001, "字段 name 校验失败：必须是非空字符串", "name")
         if len(password) < 4:
             raise _err(2001, "字段 password 校验失败：长度至少 4 位", "password")
-        return db.teacher.create(name, password)
+        if teacher_no and db.teacher.get_by_no(teacher_no):
+            raise _err(2001, "工号已存在", "teacher_no")
+        return db.teacher.create(name, password, teacher_no)
     if action == "teachers.update":
         teacher_id = str(payload.get("teacher_id") or "")
         if not db.teacher.get(teacher_id):
             raise _err(2002, "教师不存在", "teacher_id")
-        if "name" in payload and payload["name"] is not None:
-            db.teacher.rename(teacher_id, str(payload["name"]).strip())
-        return db.teacher.get(teacher_id)
+        name = payload.get("name")
+        teacher_no = payload.get("teacher_no")
+        if teacher_id == PRESET_TEACHER_ID and teacher_no is not None \
+                and str(teacher_no).strip() != PRESET_TEACHER_ID:
+            raise _err(2001, "预置教师工号不可修改", "teacher_no")
+        try:
+            return db.teacher.rename(teacher_id, name, teacher_no)
+        except ValueError as exc:
+            raise _err(2001, str(exc), "teacher_no")
     if action == "teachers.reset_password":
         teacher_id = str(payload.get("teacher_id") or "")
         new_password = str(payload.get("new_password") or "")
@@ -1448,10 +1485,18 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         teacher_id = str(payload.get("teacher_id") or "")
         if teacher_id == PRESET_TEACHER_ID:
             raise _err(2001, "预置教师不可删除", "teacher_id")
-        result = db.teacher.delete(teacher_id)
-        if result is None:
+        if not db.teacher.get(teacher_id):
             raise _err(2002, "教师不存在", "teacher_id")
-        return result
+        # 级联清理该教师在主库的排班关联（预约留痕/预约/候补/停诊），避免孤儿数据与外键冲突
+        db.execute(
+            "DELETE FROM appointment_events WHERE appointment_id IN"
+            " (SELECT apt_id FROM appointments WHERE teacher_id=?)", (teacher_id,))
+        db.execute("DELETE FROM appointments WHERE teacher_id=?", (teacher_id,))
+        db.execute("DELETE FROM waitlist WHERE teacher_id=?", (teacher_id,))
+        db.execute("DELETE FROM blocks WHERE teacher_id=?", (teacher_id,))
+        db.commit()
+        # 教师分支（凭证/可用时间/身份）仍由 DAO 删除，保持唯一写入口
+        return db.teacher.delete(teacher_id)
     if action == "teachers.availability.set":
         teacher_id = str(payload.get("teacher_id") or "")
         result = db.teacher.set_availability(teacher_id, list(payload.get("items") or []))

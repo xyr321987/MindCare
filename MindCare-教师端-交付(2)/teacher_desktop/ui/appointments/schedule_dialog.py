@@ -11,15 +11,16 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
-from PySide6.QtCore import QDate, QTime, Qt
+from PySide6.QtCore import QDate, QTime
 from PySide6.QtWidgets import (
-    QAbstractSpinBox, QComboBox, QDateEdit, QDialog, QDialogButtonBox,
-    QHBoxLayout, QLabel, QLineEdit, QTimeEdit, QVBoxLayout,
+    QAbstractSpinBox, QComboBox, QDateEdit, QDialogButtonBox,
+    QHBoxLayout, QLineEdit, QTimeEdit,
 )
 
 from desktop_common.widgets import make_label
 
 from ...core.models import Appointment
+from ..common.dialog_base import BaseDialog
 
 _TZ = timezone(timedelta(hours=8))
 
@@ -27,7 +28,7 @@ _TZ = timezone(timedelta(hours=8))
 _UNSET = "（未分配）"
 
 
-class ScheduleDialog(QDialog):
+class ScheduleDialog(BaseDialog):
     """给某条求助请求约定时间 / 改期。accepted 后读 scheduled_iso / note / teacher_id / room_id。"""
 
     def __init__(self, student_name: str, class_name: str,
@@ -36,18 +37,11 @@ class ScheduleDialog(QDialog):
         super().__init__(parent)
         self._reschedule = existing is not None
         self.setWindowTitle("改期预约" if self._reschedule else "约定预约时间")
-        self.setModal(True)
         self.setMinimumWidth(420)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(22, 20, 22, 18)
-        layout.setSpacing(12)
-
         action = "改期" if self._reschedule else "安排"
-        layout.addWidget(make_label(f"为 {student_name}（{class_name}）{action}心理约谈",
-                                    "CardTitle", word_wrap=False))
-        layout.addWidget(make_label("确定的时间会写入预约数据库，并展示在当日单线流程中",
-                                    "Hint"))
+        self.set_header(f"为 {student_name}（{class_name}）{action}心理约谈",
+                        "确定的时间会写入预约数据库，并展示在当日单线流程中")
 
         # ---- 日期 + 时间一行
         row = QHBoxLayout()
@@ -66,7 +60,7 @@ class ScheduleDialog(QDialog):
         self.time_edit.setDisplayFormat("HH:mm")
         self.time_edit.setButtonSymbols(QAbstractSpinBox.NoButtons)
         row.addWidget(self.time_edit, 1)
-        layout.addLayout(row)
+        self.add_content_layout(row)
 
         # ---- 教师 + 咨询室一行
         row2 = QHBoxLayout()
@@ -88,7 +82,7 @@ class ScheduleDialog(QDialog):
                 name += "（停用）"
             self.room_combo.addItem(name, r.get("room_id"))
         row2.addWidget(self.room_combo, 1)
-        layout.addLayout(row2)
+        self.add_content_layout(row2)
 
         # 默认选中首个教师 + 首个启用咨询室（多教师/多咨询室调度时冲突检测开箱即用）
         if self.teacher_combo.count() > 1:
@@ -100,17 +94,17 @@ class ScheduleDialog(QDialog):
                     self.room_combo.setCurrentIndex(idx)
                     break
 
-        layout.addWidget(make_label("备注（地点/方式，可选）", "Body", word_wrap=False))
+        self.add_to_content(make_label("备注（地点/方式，可选）", "Body", word_wrap=False))
         self.note_edit = QLineEdit()
         self.note_edit.setPlaceholderText("如：线上语音 / 需家长陪同")
-        layout.addWidget(self.note_edit)
+        self.add_to_content(self.note_edit)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText("确定改期" if self._reschedule else "确定预约")
         buttons.button(QDialogButtonBox.Cancel).setText("取消")
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.set_buttons(buttons)
 
         # ---- 改期模式预填
         if existing is not None:

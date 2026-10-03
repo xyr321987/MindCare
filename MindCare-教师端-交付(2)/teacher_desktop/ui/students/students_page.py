@@ -71,10 +71,16 @@ class StudentsPage(PageBase):
         name.setMinimumWidth(180)
         h.addWidget(name)
         history = bool(item.flags.has_history)
-        hist_btn = make_button("取消病史" if history else "标记病史",
+        preview = str(item.flags.history_text or "")
+        if len(preview) > 18:
+            preview = preview[:18] + "…"
+        hist_label = make_label(f"病史：{preview}" if preview else "病史：未填写",
+                                "Hint", word_wrap=False)
+        h.addWidget(hist_label, 1)
+        hist_btn = make_button("编辑病史",
                                "AccentButton" if history else "ghost")
-        hist_btn.clicked.connect(lambda _=False, sid=item.student_id, cur=history:
-                                 self._toggle_history(sid, cur))
+        hist_btn.clicked.connect(lambda _=False, sid=item.student_id:
+                                 self._edit_history(sid))
         h.addWidget(hist_btn)
         reset_btn = make_button("重置密码", "ghost")
         reset_btn.clicked.connect(lambda _=False, sid=item.student_id, nm=item.name:
@@ -84,10 +90,17 @@ class StudentsPage(PageBase):
         return w
 
     # ------------------------------------------------------------------ 动作
-    def _toggle_history(self, student_id: str, current: bool) -> None:
+    def _edit_history(self, student_id: str) -> None:
+        text, ok = QInputDialog.getMultiLineText(
+            self, "编辑病史", "填写具体病史（留空即清除标记）")
+        if not ok:
+            return
+        history = text.strip()
+
         def _job():
-            return self.ctx.adapters.student_admin.set_history(student_id, not current)
-        self.call(_job, on_ok=lambda _d: (self.show_toast("已更新病史标记"), self.refresh()),
+            return self.ctx.adapters.student_admin.set_history(
+                student_id, bool(history), history or None)
+        self.call(_job, on_ok=lambda _d: (self.show_toast("已更新病史"), self.refresh()),
                   on_fail=lambda e: self.show_toast(getattr(e, "message", "操作失败")))
 
     def _reset_password(self, student_id: str, name: str) -> None:

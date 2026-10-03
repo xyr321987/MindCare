@@ -42,14 +42,17 @@
 
 | ID | 文案 |
 |----|------|
-| s.q1.title | 今天的你，感觉怎么样？ |
-| s.q1.subtitle | 没有对错，按第一感觉选就好。 |
-| s.q1.option.happy | 高兴 |
+| s.q1.title | 今天的心情，想是什么天气？ |
+| s.q1.subtitle | 不用想太多，选一个最像你此刻的感觉吧。 |
+| s.q1.option.happy | 晴天 |
 | s.q1.option.happy.emoji | ☀️ |
-| s.q1.option.plain | 平淡 |
-| s.q1.option.plain.emoji | ☁️ |
-| s.q1.option.down | 沮丧 |
-| s.q1.option.down.emoji | 😣 |
+| s.q1.option.happy.desc | 今天还不错 |
+| s.q1.option.plain | 多云 |
+| s.q1.option.plain.emoji | ⛅ |
+| s.q1.option.plain.desc | 有点复杂，说不上来 |
+| s.q1.option.down | 小雨 |
+| s.q1.option.down.emoji | 🌧️ |
+| s.q1.option.down.desc | 今天想被温柔对待 |
 | s.q1.hint.optional | 这一题选了就好，不用想太久。 |
 
 ### 1.2 A 分支（高兴）—— 对应 `result_scene=happy_end`
@@ -91,16 +94,26 @@
 
 | ID | 文案 |
 |----|------|
-| s.explore.title | 情绪探索 |
-| s.explore.subtitle | 最近是什么让你有这种感觉？ |
-| s.explore.hint | 可以多选，选最贴近的几个就好。 |
-| s.explore.option.study | 学习 |
-| s.explore.option.exam | 考试 |
-| s.explore.option.relationship | 同学关系 |
-| s.explore.option.family | 家庭 |
-| s.explore.option.sleep | 睡眠 |
-| s.explore.option.future | 对未来的担心 |
-| s.explore.option.other | 其他 |
+| s.explore.title | 今天的心情，正吹着什么风？ |
+| s.explore.subtitle | 心潮每天都在换潮汐，发呆或起伏都算数。来给此刻的自己，悄悄别一枚情绪书签。 |
+| s.explore.hint | 挑几阵最近拂过你心头的小风（可多选） |
+| s.explore.option.study | 学业日常 |
+| s.explore.option.study.desc | 卷子与待办堆成了小山丘，脑子里的 CPU 天天在超频运转。 |
+| s.explore.option.exam | 考场风云 |
+| s.explore.option.exam.desc | 考前心跳在敲架子鼓，考后还在反复回放，主打一个坚决不下班。 |
+| s.explore.option.relationship | 同窗社交 |
+| s.explore.option.relationship.desc | 群聊与眼神里的小九九，有些未完的对话，在心里结成了微涩的果。 |
+| s.explore.option.family | 屋檐底下 |
+| s.explore.option.family.desc | 那个叫家的地方，偶尔落下的几滴雨，也会淋湿这边的晴空。 |
+| s.explore.option.sleep | 夜半数羊 |
+| s.explore.option.sleep.desc | 肉身已在被窝投降，灵魂却在深夜蹦迪，非要再哲学思考五分钟。 |
+| s.explore.option.future | 未临之境 |
+| s.explore.option.future.desc | 明天还在路上晃悠，心里那点小忐忑，已经提前搬来小板凳排号了。 |
+| s.explore.option.other | 未命名的海 |
+| s.explore.option.other.desc | 上面都没猜中这阵风的来向？那这片私人气象，由你来亲手涂色。 |
+| s.explore.hint.bottom | 凭直觉点一点就好。不必工整，也不必纠结；情绪本是流动的风，从没有唯一的标准答案。 |
+| s.explore.action.back | 退回树荫下想想 |
+| s.explore.action.next | 顺风继续走走 |
 
 #### 1.4.2 Q2 原因（`cause_category`，**仅平淡分支**）
 
@@ -134,12 +147,18 @@
 
 | ID | 文案 |
 |----|------|
-| s.q3.title | 请你详细阐述一下原因 |
-| s.q3.subtitle | 想到多少写多少，不限字数。你写下的内容默认只有你自己能看到。 |
-| s.q3.placeholder | 慢慢写，写给自己看也可以。 |
-| s.q3.guide.1 | 可以是一件小事 |
-| s.q3.guide.2 | 想到什么就写什么 |
-| s.q3.guide.3 | 如果觉得乱也没关系 |
+| s.q3.title | 起伏的心潮，愿不愿意靠岸停一会儿？ |
+| s.q3.subtitle | 不必讲究章法，无需精雕细琢。那些碎碎念就像掉在地上的落叶，怎么摆放都很自然。 |
+| s.q3.placeholder | 比如：今天那件事其实一直在心头晃悠，我有点想把它卸在这里…… |
+| s.q3.guide.title | 这里可以安放： |
+| s.q3.guide.1 | · 一粒让你嘴角上扬、或悄悄叹气的小沙子 |
+| s.q3.guide.2 | · 某个在脑海里反复重播、舍不得关机的小片段 |
+| s.q3.guide.3 | · 那些卡在嗓子眼、最后咽回去的自言自语 |
+| s.q3.guide.4 | · 甚至是一团乱麻、连你自己都没给它起名字的迷茫气泡 |
+| s.q3.guide.example | 比如：今天那件事其实一直在心头晃悠，我有点想把它卸在这里…… |
+| s.q3.hint.bottom | 哪怕只是敲下“好累啊，只想关机”，也是真实发出的信号，都值得被温柔接住。 |
+| s.q3.action.back | 退回上一页踱踱步 |
+| s.q3.action.next | 带上思绪往前走 |
 | s.q3.error.empty | 写一点点也可以，哪怕只有一句话。 |
 | s.q3.counter.hidden | （不显示字数上限、不显示"还剩 X 字"、不做倒计时） |
 
@@ -150,15 +169,18 @@
 
 | ID | 文案 |
 |----|------|
-| s.help.title | 要不要让心理老师陪你一起看看？ |
-| s.help.body | 选「请求帮助」，你这次写下的内容会带给心理老师，老师会尽快看到。选「不用帮助」，内容就留在你这里，一样会被好好保存。 |
-| s.help.option.request | 请求心理老师帮助 |
-| s.help.option.no | 不用帮助 |
-| s.help.option.request.note | 老师会看到你这次写的内容。 |
-| s.help.option.no.note | 只有你自己能看到。如果之后想让老师知道，也可以随时改主意。 |
-| s.help.selected.request | 已选择：老师可以看到你这次写的内容。 |
-| s.help.selected.no | 已选择：内容只留在你这里。 |
-| s.help.hint | 怎么选都可以，两种选择都不会让你被追问。 |
+| s.help.title | 起风的时候，要不要分一把伞给身旁的人？ |
+| s.help.subtitle | 心事这东西，揣在兜里慢慢捂热很酷，但若有些沉，借个靠谱的肩膀分担一下也绝不丢人。 |
+| s.help.body | 选「借个外援」，这次写下的碎碎念会轻轻投递给老师；选「免打扰模式」，文字就锁进你的私人结界。 |
+| s.help.option.request | 借个外援：想请心理老师陪我坐会儿 |
+| s.help.option.no | 免打扰模式：今天只想在自己的小窝待着 |
+| s.help.option.request.note | 本次写下的碎碎念会变成专属信件，轻轻投递给老师。多一个人帮你梳理乱糟糟的线头，电量能回得快一些。 |
+| s.help.option.no.note | 文字会自动锁进你的私人结界，谁也翻不开。等哪天雨停了，或者想换个姿势发呆，随时欢迎你推门出来。 |
+| s.help.selected.request | 已选择：这次写下的碎碎念会轻轻投递给老师。 |
+| s.help.selected.no | 已选择：文字锁进你的私人结界，谁也翻不开。 |
+| s.help.hint | 选哪个都是满分答卷，没有对错，更不是谁出了故障。只要顺着你此刻最舒服的心意走就好。 |
+| s.help.action.back | 退回帘子后想想 |
+| s.help.action.next | 落锁，存好心绪 |
 
 #### 1.5.1 预约时间选择（request_help=true 时进入）
 
@@ -170,25 +192,26 @@
 
 | ID | 文案 |
 |----|------|
-| s.appointment.title | 挑一个方便来找老师的时间 |
-| s.appointment.subtitle | 横着是星期，竖着是第几节课。点一个小方块就选好了。 |
+| s.appointment.title | 在喧闹的日子里，给心事留一盏灯 |
+| s.appointment.subtitle | 横轴是周历，竖轴是节次。挑一个不用赶路的空隙，让情绪也有地方安心落座。 |
 | s.appointment.year | 年份 |
 | s.appointment.month | 月份 |
 | s.appointment.day | 日期 |
 | s.appointment.time | 时间段 |
-| s.appointment.share.title | 除了基本信息，还想一起给老师看哪些？（可选） |
+| s.appointment.share.title | 除了今天的心潮，还想带上哪些行李碎片？（可选） |
 | s.appointment.share.questionnaire | 我这次的测评内容 |
 | s.appointment.share.treehole | 我的树洞记录 |
 | s.appointment.share.hint | 不选也没关系，老师只会看到你的班级、学号和预约时间。 |
-| s.appointment.confirm | 确认预约 |
-| s.appointment.teacher.title | 选择预约老师（可选） |
-| s.appointment.teacher.none | 不指定老师 |
+| s.appointment.confirm | 落定，把这段时光留给自己 |
+| s.appointment.teacher.title | 想和哪位引路人同行？（可选） |
+| s.appointment.teacher.none | 随缘偶遇，温柔的盟友都在 |
 | s.appointment.teacher.empty | 该时段暂无可预约的老师，换一个时间试试 |
 | s.appointment.teacher.loading | 正在查询可预约老师… |
-| s.appointment.room.title | 选择咨询室（必选） |
-| s.appointment.room.empty | 该时段暂无可预约的咨询室，换一个时间试试 |
+| s.appointment.room.title | 挑一间避风的小木屋（必选） |
+| s.appointment.room.empty | 此刻的小木屋都满客啦，换个时段看看别处的风景？ |
 | s.appointment.room.loading | 正在查询可预约咨询室… |
-| s.appointment.profile.title | 预约人信息 |
+| s.appointment.room.none | 先锚定时针，咱们再挑落脚的屋檐 |
+| s.appointment.profile.title | 这次来停靠的旅人 |
 | s.appointment.profile.name | 姓名 |
 | s.appointment.profile.class | 班级 |
 | s.appointment.profile.sid | 学号 |
@@ -197,10 +220,10 @@
 | s.appointment.selected.none | 还没选时间 |
 | s.appointment.error.none | 先点一个小方块，选好时间再来确认。 |
 | s.appointment.error.blocked | 老师把这段时间设成了不可预约，换一个吧。 |
-| s.appointment.error.taken | 这个时间已经有同学约了，换一个吧。 |
+| s.appointment.error.taken | 这个路口人头攒动已约满，排个候补，或换个清静时段等等风来。 |
 | s.appointment.error.past | 这个时间已经过去了，选一个还没到的时间。 |
 | s.appointment.hint.grid | 红框是老师这节课不方便的时间，点不了。 |
-| s.appointment.success | 预约好了，老师会在这个时间看到你。 |
+| s.appointment.success | 好啦，这段时光已专为你锁上。带上心事，到时候见。 |
 
 ### 1.6 五个结束页（`result_scene`）
 
@@ -275,7 +298,7 @@
 
 | ID | 文案 |
 |----|------|
-| s.treehole.tab.title | 树洞 |
+| s.treehole.tab.title | 心事一隅 |
 | s.treehole.entry.title | 树洞 · 说给谁听都可以 |
 | s.treehole.entry.subtitle | 有些话说出来，就会轻一点。 |
 | s.treehole.list.title | 我的树洞 |
@@ -394,18 +417,26 @@
 | home.nav.slogan | 在这里，遇见更好的自己 |
 | home.nav.home | 首页 |
 | home.nav.settings | 设置 |
-| home.welcome.hello | 你好，{name} |
-| home.welcome.subtitle | 今天的你，也在努力发光。 |
+| home.welcome.hello | 嗨，今天也辛苦啦。 |
+| home.welcome.subtitle | 不必急着成为更好的自己，先好好照顾此刻的你。 |
+| home.mood.title | 心情签到 |
+| home.mood.big | 今天的心情，想是什么天气？ |
+| home.mood.hint | 不用想太多，选一个最像你此刻的感觉吧。 |
+| home.mood.action | 记下此刻 → |
+| home.card.questionnaire.title | 记一记心情 |
 | home.card.questionnaire.desc | 给今天的情绪做个小小的记录 |
-| home.card.treehole.desc | 把心里想说的话悄悄放进来 |
-| home.card.appointment.desc | 和老师聊一聊，让心情轻一点 |
+| home.card.treehole.title | 去树洞说说话 |
+| home.card.treehole.desc | 这里的话，只属于你 |
+| home.card.appointment.title | 预约聊一聊 |
+| home.card.appointment.desc | 想找个人听听，就来这里 |
+| home.card.profile.title | 我的小档案 |
 | home.card.profile.desc | 看看一路走来的自己 |
 | home.note.title | 今日的小纸条 |
 | home.note.change | 换一条 |
-| home.note.sign | —— 见山 |
-| home.note.1 | 你已经很努力了，不必对自己太苛刻。慢慢来，山会等你。 |
-| home.note.2 | 今天也辛苦了。休息一下，也是认真生活的一部分。 |
-| home.note.3 | 不必急着变好，先把今天过成舒服的样子。 |
+| home.note.sign | 来自 MindCare 的每日温柔提醒 |
+| home.note.1 | 允许自己偶尔不在状态，毕竟你不是永动机。 |
+| home.note.2 | 你已经很努力了，不必对自己太苛刻。慢慢来，山会等你。 |
+| home.note.3 | 今天也辛苦了。休息一下，也是认真生活的一部分。 |
 | home.note.4 | 你走过的每一步，都在慢慢把自己带到想去的地方。 |
 | home.activity.title | 最近活动 |
 | home.activity.empty | 还没有活动记录，从今天的心情打卡开始吧。 |
@@ -704,7 +735,7 @@
 | c.hotline.beijing.number | 010-82951332 |
 | c.hotline.emergency.name | 紧急情况（急救 / 报警） |
 | c.hotline.emergency.number | 120 / 110 |
-| c.hotline.line | 全国统一心理援助热线 12356 ｜ 北京心理援助热线 010-82951332 ｜ 紧急情况拨打 120 / 110 |
+| c.hotline.line | 寻一抹回音·全国心理援助热线：12356 ｜ 遇狂风骤雨·即刻召唤硬核救援：120 / 110 |
 | c.hotline.footer | 这些电话 24 小时有人接，说"我现在不太好"就可以。 |
 
 ### 4.4 通用动作词
@@ -729,15 +760,16 @@
 
 | ID | 文案 |
 |----|------|
-| s.notice.title | 开始之前，想先和你说清楚 |
-| s.notice.item1 | 你填的内容只用于学校里的心理支持，不做别的用途。 |
-| s.notice.item2 | 内容默认只有你自己能看到。只有你选了「请求心理老师帮助」，老师才会看到这次的内容。 |
-| s.notice.item3 | 树洞里的内容永远是私密的，老师看不到，也不会进入任何统计。 |
+| s.notice.title | 见山之前，先签个散漫协议 |
+| s.notice.subtitle | 不必规整，这里既无标尺，亦无红笔打叉。今天就算只想当一块发霉的苔藓，也准你拿满分。 |
+| s.notice.item1 | 这里没有喧闹的看客，放心卸下防备。笔尖落下的细碎心潮，只负责接住疲惫的你，绝不会被打包送进任何奇怪的大人报告里。 |
+| s.notice.item2 | 心事锁在云朵里，钥匙揣在你兜里。文字默认在你的小宇宙里隐身游荡；唯有你主动按下「请求心理老师帮助」时，那扇门才会向温柔的盟友轻轻虚掩。 |
+| s.notice.item3 | 树洞是你的林间秘境，雷达统统失效。那些不想示人的碎碎念，丢进落叶堆就归大地管了，不进大盘、不计绩效，任谁也探测不到。 |
 | s.notice.item4 | 如果和学校的食堂、宿舍、设施有关，你可以写在专门的那一栏，我们会以匿名方式转给学校相关部门。 |
 | s.notice.item5 | 你可以随时决定不再填写。如果填完之后改主意了，也可以在「我的档案」里点「不让老师看了」，让这一条重新变成只有你自己能看到。 |
 | s.notice.item6 | 撤回之后不能再改回"老师可以看到"，想再让老师知道，重新填一次就可以。 |
-| s.notice.action.agree | 我知道了，开始 |
-| s.notice.action.exit | 先不填 |
+| s.notice.action.agree | 启程，翻翻心境 |
+| s.notice.action.exit | 先找老师避避风 |
 
 ### 4.6 学生端登录与导航
 
@@ -755,10 +787,12 @@
 | c.login.toggle.login | 已有账号？去登录 |
 | c.login.action.submit | 登录 |
 | c.login.action.register | 注册并进入 |
-| c.tab.questionnaire | 问卷 |
-| c.tab.profile | 我的档案 |
-| c.tab.appointment | 预约 |
-| c.tab.about | 关于 |
+| c.login.brand | MindCare |
+| c.login.brand.tagline | 校园心理健康关怀平台 |
+| c.tab.questionnaire | 今日见山 |
+| c.tab.profile | 见己 |
+| c.tab.appointment | 寻见 |
+| c.tab.about | 关于见山 |
 
 > 树洞 Tab 名沿用 `s.treehole.tab.title`，不另立 ID。
 >
@@ -781,7 +815,7 @@
 
 | ID | 文案 |
 |----|------|
-| c.disclaimer.nondiagnostic | 这里的内容是关怀用的参考，不构成医学诊断。如果一直觉得不太好，可以让家人或老师陪你去找医生聊聊。 |
+| c.disclaimer.nondiagnostic | 这里不是专治疑难杂症的诊断室，不过是替情绪拂尘的路边茶摊。若心头的大雨下得有点久、单薄的伞快撑不住了，别硬扛，记得拉个信得过的人一起躲躲雨。 |
 
 > **本条是 §6.6「免责表述」规定的唯一例外位置**：该节写明"「不构成诊断」这类**否定式免责**
 > 是唯一允许保留相关字样的位置，且**须单独登记**"。此处即那次登记。

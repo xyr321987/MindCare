@@ -6,26 +6,24 @@ from typing import List, Optional
 
 from PySide6.QtCore import QDate
 from PySide6.QtWidgets import (
-    QCheckBox, QDateEdit, QDialog, QDialogButtonBox, QGridLayout, QHBoxLayout,
-    QLineEdit, QVBoxLayout,
+    QCheckBox, QDateEdit, QDialogButtonBox, QGridLayout, QHBoxLayout,
+    QLineEdit,
 )
 
 from desktop_common.widgets import make_label
 
+from ..common.dialog_base import BaseDialog
+
 _PERIODS = [f"第{i}节" for i in range(1, 9)]
 
 
-class BatchBlockDialog(QDialog):
+class BatchBlockDialog(BaseDialog):
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.setWindowTitle("批量停诊 / 恢复")
-        self.setModal(True)
         self.setMinimumWidth(400)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(22, 20, 22, 18)
-        layout.setSpacing(12)
-        layout.addWidget(make_label("一次设定同一日多个节次（学生端只读）", "Hint"))
+        self.set_header("批量停诊 / 恢复", "一次设定同一日多个节次（学生端只读）")
 
         row = QHBoxLayout()
         row.addWidget(make_label("日期", "Body", word_wrap=False))
@@ -33,9 +31,9 @@ class BatchBlockDialog(QDialog):
         self.date_edit.setCalendarPopup(True)
         self.date_edit.setDisplayFormat("yyyy-MM-dd")
         row.addWidget(self.date_edit, 1)
-        layout.addLayout(row)
+        self.add_content_layout(row)
 
-        layout.addWidget(make_label("勾选要设定的节次", "Body", word_wrap=False))
+        self.add_to_content(make_label("勾选要设定的节次", "Body", word_wrap=False))
         grid = QGridLayout()
         grid.setSpacing(8)
         self._checks: List[QCheckBox] = []
@@ -44,23 +42,23 @@ class BatchBlockDialog(QDialog):
             cb.setChecked(False)
             self._checks.append(cb)
             grid.addWidget(cb, i // 4, i % 4)
-        layout.addLayout(grid)
+        self.add_content_layout(grid)
 
-        layout.addWidget(make_label("原因（可选）", "Body", word_wrap=False))
+        self.add_to_content(make_label("原因（可选）", "Body", word_wrap=False))
         self.reason_edit = QLineEdit()
         self.reason_edit.setPlaceholderText("如：教师会议 / 临时外出")
-        layout.addWidget(self.reason_edit)
+        self.add_to_content(self.reason_edit)
 
         self.blocked_check = QCheckBox("设为不可预约（取消勾选 = 恢复可预约）")
         self.blocked_check.setChecked(True)
-        layout.addWidget(self.blocked_check)
+        self.add_to_content(self.blocked_check)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText("确定")
         buttons.button(QDialogButtonBox.Cancel).setText("取消")
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.set_buttons(buttons)
 
     # ------------------------------------------------------------------ 结果
     @property

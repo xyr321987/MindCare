@@ -262,6 +262,10 @@ class ProfileTab(QWidget):
         self.chart_empty = make_hint(COPY["c.profile.chart.empty"])
         self.chart_empty.setAlignment(Qt.AlignCenter)
         self.chart_empty.setVisible(False)
+        # 空状态提示与图表底部横轴标签之间留出间距，避免重叠遮挡（往下调）
+        self._chart_gap = QWidget()
+        self._chart_gap.setFixedHeight(18)
+        card.add(self._chart_gap)
         card.add(self.chart_empty)
         lay.addWidget(card)
         lay.addStretch(1)
@@ -333,6 +337,7 @@ class ProfileTab(QWidget):
             self.day_picker.addItem(day)
         self.day_picker.blockSignals(False)
         if not self._dates:
+            self._clear_rows()   # 换人后无记录也要清掉上一账号的旧记录行
             self.empty_label.setText(COPY["c.empty.profile.dates"])
             self.empty_label.setVisible(True)
             return
@@ -374,6 +379,13 @@ class ProfileTab(QWidget):
     def show_error(self, text: str) -> None:
         self.error_label.setText(text)
         self.error_label.setVisible(bool(text))
+
+    def reset(self) -> None:
+        """登出/换人时复位档案页：清记录行、清情绪图缓存、清日期与错误提示。"""
+        self._clear_rows()
+        self._chart_mood = {}
+        self.show_error("")
+        self.set_dates([])
 
     # ---------------------------------------------------------------- 查询助手
 

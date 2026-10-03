@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS students (
     name              TEXT NOT NULL,
     class_name        TEXT NOT NULL,
     has_mental_history INTEGER NOT NULL DEFAULT 0,
+    mental_history    TEXT,
     created_ts        TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS credentials (
@@ -114,7 +115,7 @@ CREATE TABLE IF NOT EXISTS appointment_events (
 );
 CREATE TABLE IF NOT EXISTS blocks (
     blk_id     TEXT PRIMARY KEY,
-    slot       TEXT NOT NULL UNIQUE,
+    slot       TEXT NOT NULL,
     year       TEXT,
     month      TEXT,
     day        TEXT,
@@ -170,6 +171,7 @@ CREATE INDEX IF NOT EXISTS idx_tree_stu_date ON treehole_entries(student_id, dat
 CREATE INDEX IF NOT EXISTS idx_tickets_stu ON tickets(student_id);
 CREATE INDEX IF NOT EXISTS idx_appt_stu ON appointments(student_id);
 CREATE INDEX IF NOT EXISTS idx_appt_slot ON appointments(slot);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_appt_slot_sched ON appointments(slot) WHERE status='scheduled';
 CREATE INDEX IF NOT EXISTS idx_wait_slot ON waitlist(year, month, day, period, status);
 CREATE INDEX IF NOT EXISTS idx_warn_stu ON warnings(student_id);
 """
@@ -216,6 +218,7 @@ class Database:
             self._conn.executescript(SCHEMA)
             self._conn.commit()
         self._migrate()
+        self._migrate_blocks_unique()
         self._seed()
         # 教师信息分支唯一 DAO（其余模块对教师数据只读、只走这里）
         self.teacher = TeacherStore(self, hash_password, verify_password)
@@ -273,6 +276,57 @@ class Database:
         for name in ("location", "features"):
             if name not in rcols:
                 self.execute(f"ALTER TABLE rooms ADD COLUMN {name} TEXT")
+        # 学生既往病史文本（mental_history）：旧库补列（自由文本，可空）
+        scols = {r["name"] for r in self.query("PRAGMA table_info(students)")}
+        if "mental_history" not in scols:
+            self.execute("ALTER TABLE students ADD COLUMN mental_history TEXT")
+        # 教师工号（teacher_no）：旧库补列 + 回填 + 唯一索引（ADD COLUMN 不能带 UNIQUE）
+        tcols = {r["name"] for r in self.query("PRAGMA table_info(teachers)")}
+        if "teacher_no" not in tcols:
+            self.execute("ALTER TABLE teachers ADD COLUMN teacher_no TEXT")
+        self.execute("UPDATE teachers SET teacher_no = teacher_id WHERE teacher_no IS NULL")
+        self.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_teacher_no ON teachers(teacher_no)")
+        self.commit()
+
+    def _migrate_blocks_unique(self) -> None:
+        """把 `blocks.slot` 的列级 UNIQUE 迁移为「全校/个人停诊可并存」的复合唯一。
+
+        旧的列级 `UNIQUE` 会生成隐式索引 `sqlite_autoindex_blocks_1`（SQLite 不允许
+        直接删掉它），存在即重建表。重建后用两条部分唯一索引表达新约束：
+        - 全校停诊：每格至多一条 `teacher_id IS NULL`；
+        - 个人停诊：每格每教师至多一条 `teacher_id IS NOT NULL`。
+        """
+        has_old_unique = any(
+            r["origin"] == "u" for r in self.query("PRAGMA index_list(blocks)"))
+        if has_old_unique:
+            with self._lock:
+                self._conn.executescript(
+                    "ALTER TABLE blocks RENAME TO blocks_old;\n"
+                    "CREATE TABLE blocks (\n"
+                    "    blk_id     TEXT PRIMARY KEY,\n"
+                    "    slot       TEXT NOT NULL,\n"
+                    "    year       TEXT,\n"
+                    "    month      TEXT,\n"
+                    "    day        TEXT,\n"
+                    "    period     TEXT,\n"
+                    "    active     INTEGER NOT NULL DEFAULT 1,\n"
+                    "    reason     TEXT,\n"
+                    "    operator   TEXT,\n"
+                    "    teacher_id TEXT,\n"
+                    "    created_ts TEXT NOT NULL\n"
+                    ");\n"
+                    "INSERT INTO blocks"
+                    " (blk_id, slot, year, month, day, period, active, reason, operator, teacher_id, created_ts)\n"
+                    " SELECT blk_id, slot, year, month, day, period, active, reason, operator, teacher_id, created_ts"
+                    " FROM blocks_old;\n"
+                    "DROP TABLE blocks_old;\n")
+                self._conn.commit()
+        self.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_blocks_global"
+            " ON blocks(slot) WHERE teacher_id IS NULL")
+        self.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_blocks_teacher"
+            " ON blocks(slot, teacher_id) WHERE teacher_id IS NOT NULL")
         self.commit()
 
     # ------------------------------------------------------------------ 种子

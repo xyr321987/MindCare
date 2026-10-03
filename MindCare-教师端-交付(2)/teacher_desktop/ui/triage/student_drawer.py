@@ -93,6 +93,11 @@ class StudentDrawer(QFrame):
                                       "DrawerHint", word_wrap=False))
         self._box.addLayout(mood_row)
 
+        # ---- 既往病史
+        if today.mental_history:
+            self._add_label("既往病史", "SectionCaption")
+            self._add_label(today.mental_history, "Body")
+
         # ---- 预警卡
         if today.alert:
             self._box.addWidget(self._build_alert_card(today))

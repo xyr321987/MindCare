@@ -23,6 +23,7 @@ from desktop_common.api import format_ts_human, today_str
 from desktop_common.widgets import Card, Progress, make_hint, make_label, make_title
 
 from ..common.async_mixin import PageBase
+from ..common.chartkit import C_POSITIVE, RingGauge
 from ..common.svg import svg_pixmap
 
 #: 统计卡配置：key -> (标题, 图标, tone)
@@ -67,10 +68,36 @@ class _StatCard(Card):
         self.value_label.setText(str(int(value or 0)))
 
 
-class OverviewPage(PageBase):
-    """工作预览首页。"""
+class _TodoCountCard(Card):
+    """待办事项的数字指示卡：大数字 + 色点标题，快速读数量。"""
 
-    PAGE_TITLE = "工作预览"
+    def __init__(self, title: str, tone: str,
+                 parent: Optional[QWidget] = None) -> None:
+        super().__init__(parent)
+        inner = self.body_layout()
+        inner.setContentsMargins(14, 12, 14, 12)
+        inner.setSpacing(4)
+        self.value_label = make_label("0", "StatValue", word_wrap=False)
+        inner.addWidget(self.value_label)
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        dot = QLabel(self)
+        dot.setObjectName("StatIcon")
+        dot.setProperty("tone", tone)
+        dot.setFixedSize(12, 12)
+        row.addWidget(dot)
+        row.addWidget(make_label(title, "StatTitle", word_wrap=False))
+        row.addStretch(1)
+        inner.addLayout(row)
+
+    def set_count(self, count: int) -> None:
+        self.value_label.setText(str(int(count or 0)))
+
+
+class OverviewPage(PageBase):
+    """工作总览首页。"""
+
+    PAGE_TITLE = "工作总览"
 
     def __init__(self, ctx, parent: Optional[QWidget] = None) -> None:
         super().__init__(ctx, parent)
@@ -81,7 +108,7 @@ class OverviewPage(PageBase):
         header.setSpacing(12)
         title_col = QVBoxLayout()
         title_col.setSpacing(4)
-        title_col.addWidget(make_title("工作预览"))
+        title_col.addWidget(make_title("工作总览"))
         title_col.addWidget(make_hint("把每一次关注，变成及时而温柔的支持"))
         header.addLayout(title_col)
         header.addStretch(1)
@@ -113,6 +140,14 @@ class OverviewPage(PageBase):
         todo_inner.setContentsMargins(20, 18, 20, 18)
         todo_inner.setSpacing(10)
         todo_inner.addWidget(make_label("待办事项", "SectionTitle", word_wrap=False))
+        # 数字指示卡：一眼看到待办数量
+        count_row = QHBoxLayout()
+        count_row.setSpacing(10)
+        self.todo_appt_count = _TodoCountCard("待确认预约", "help")
+        self.todo_warn_count = _TodoCountCard("待响应预警", "warning")
+        count_row.addWidget(self.todo_appt_count, 1)
+        count_row.addWidget(self.todo_warn_count, 1)
+        todo_inner.addLayout(count_row)
         self._todo_rows = QVBoxLayout()
         self._todo_rows.setSpacing(0)
         todo_inner.addLayout(self._todo_rows)
@@ -131,12 +166,22 @@ class OverviewPage(PageBase):
         prog_inner.setContentsMargins(20, 18, 20, 18)
         prog_inner.setSpacing(10)
         prog_inner.addWidget(make_label("今日工作进度", "SectionTitle", word_wrap=False))
+        # 环形进度 + 右侧文字 / 进度条
+        prog_body = QHBoxLayout()
+        prog_body.setSpacing(16)
+        self.progress_ring = RingGauge(C_POSITIVE, size=96)
+        prog_body.addWidget(self.progress_ring)
+        prog_right = QVBoxLayout()
+        prog_right.setSpacing(6)
         self.progress_value = make_label("0 / 0", "StatValue", word_wrap=False)
-        prog_inner.addWidget(self.progress_value)
+        prog_right.addWidget(self.progress_value)
         self.progress_bar = Progress()
-        prog_inner.addWidget(self.progress_bar)
+        prog_right.addWidget(self.progress_bar)
         self.progress_hint = make_hint("")
-        prog_inner.addWidget(self.progress_hint)
+        prog_right.addWidget(self.progress_hint)
+        prog_right.addStretch(1)
+        prog_body.addLayout(prog_right, 1)
+        prog_inner.addLayout(prog_body)
         right_col.addWidget(self.progress_card)
 
         self.activity_card = Card()
@@ -214,6 +259,10 @@ class OverviewPage(PageBase):
         self._stats["active_warn"].set_value(data.get("active_warn", 0))
         self._stats["done"].set_value(data.get("done", 0))
 
+        # 待办事项数字指示卡
+        self.todo_appt_count.set_count(data.get("pending_help", 0))
+        self.todo_warn_count.set_count(data.get("active_warn", 0))
+
         self._render_todos(list(data.get("todos") or []))
         total = int(data.get("total") or 0)
         done = int(data.get("done_count") or 0)
@@ -221,6 +270,7 @@ class OverviewPage(PageBase):
         self.progress_bar.set_progress(done, total)
         percent = int(round(done / total * 100)) if total else 0
         self.progress_hint.setText(f"已完成 {percent}%")
+        self.progress_ring.set_percent(percent)
 
     def _render_todos(self, todos: List[Dict[str, str]]) -> None:
         while self._todo_rows.count():

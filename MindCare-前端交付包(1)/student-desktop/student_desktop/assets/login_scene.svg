@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="lake" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6DAD6" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#E9F0EE" stop-opacity="0.95"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#F4D7B8" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#F4D7B8" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- 晨曦暖阳 -->
+  <circle cx="1180" cy="470" r="220" fill="url(#glow)"/>
+  <circle cx="1180" cy="470" r="54" fill="#F2CFA6" opacity="0.85"/>
+
+  <!-- 远山（最远最浅） -->
+  <path d="M0 520 L180 380 L340 470 L520 340 L700 460 L860 360 L1020 470 L1180 400 L1340 470 L1500 420 L1600 460 L1600 620 L0 620 Z" fill="#C6DCD6" opacity="0.55"/>
+  <!-- 中景山 -->
+  <path d="M0 560 L200 430 L400 520 L600 410 L820 520 L1000 430 L1180 500 L1360 440 L1600 500 L1600 660 L0 660 Z" fill="#AFCEC6" opacity="0.7"/>
+  <!-- 近景山 -->
+  <path d="M0 620 L240 500 L460 590 L700 500 L940 590 L1160 510 L1400 590 L1600 540 L1600 700 L0 700 Z" fill="#9CC0B6" opacity="0.88"/>
+
+  <!-- 云雾 -->
+  <g fill="#FFFFFF" opacity="0.5">
+    <ellipse cx="300" cy="562" rx="250" ry="34"/>
+    <ellipse cx="900" cy="582" rx="310" ry="40"/>
+    <ellipse cx="1400" cy="562" rx="230" ry="30"/>
+  </g>
+
+  <!-- 湖面 -->
+  <rect x="0" y="690" width="1600" height="210" fill="url(#lake)"/>
+  <path d="M0 700 L240 760 L460 700 L700 762 L940 700 L1160 756 L1400 700 L1600 752 L1600 900 L0 900 Z" fill="#B6CEC8" opacity="0.26"/>
+  <!-- 波光 -->
+  <g stroke="#FFFFFF" stroke-width="2.2" opacity="0.42" stroke-linecap="round">
+    <path d="M180 782 q44 -6 88 0"/>
+    <path d="M760 812 q52 -8 104 0"/>
+    <path d="M1240 782 q46 -6 92 0"/>
+  </g>
+
+  <!-- 芦苇（左岸） -->
+  <g stroke="#7A938A" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M118 900 C116 842 128 802 138 762"/>
+    <path d="M160 900 C160 852 168 812 176 782"/>
+    <path d="M200 900 C200 862 206 832 210 802"/>
+  </g>
+  <g fill="#9CC0B6">
+    <ellipse cx="138" cy="760" rx="6" ry="16" transform="rotate(-12 138 760)"/>
+    <ellipse cx="176" cy="780" rx="6" ry="15" transform="rotate(-8 176 780)"/>
+    <ellipse cx="210" cy="800" rx="6" ry="14" transform="rotate(-10 210 800)"/>
+  </g>
+
+  <!-- 芦苇（右岸） -->
+  <g stroke="#7A938A" stroke-width="3" stroke-linecap="round" fill="none">
+    <path d="M1480 900 C1482 852 1476 812 1470 772"/>
+    <path d="M1520 900 C1520 862 1514 832 1508 802"/>
+  </g>
+  <g fill="#9CC0B6">
+    <ellipse cx="1470" cy="770" rx="6" ry="15" transform="rotate(10 1470 770)"/>
+    <ellipse cx="1508" cy="800" rx="6" ry="14" transform="rotate(8 1508 800)"/>
+  </g>
+
+  <!-- 小舟 -->
+  <g>
+    <path d="M1080 820 Q1120 800 1180 820 Q1140 842 1080 820 Z" fill="#6E8A80"/>
+    <path d="M1130 806 L1130 772" stroke="#6E8A80" stroke-width="3" stroke-linecap="round"/>
+    <path d="M1130 778 Q1150 782 1170 778 L1130 806 Z" fill="#AFCEC6" opacity="0.9"/>
+  </g>
+
+  <!-- 飞鸟 -->
+  <g stroke="#6E8A80" stroke-width="2.4" stroke-linecap="round" fill="none">
+    <path d="M760 300 q8 -10 16 0 M776 300 q8 -8 16 0"/>
+    <path d="M820 340 q7 -9 14 0 M834 340 q7 -7 14 0"/>
+  </g>
+</svg>

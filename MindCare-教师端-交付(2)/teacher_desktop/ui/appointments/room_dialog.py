@@ -10,11 +10,13 @@ from typing import Dict, List, Optional
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QFrame, QHBoxLayout, QLineEdit,
-    QPushButton, QVBoxLayout, QWidget,
+    QCheckBox, QDialogButtonBox, QFrame, QHBoxLayout, QLineEdit,
+    QPushButton, QVBoxLayout,
 )
 
 from desktop_common.widgets import make_hint, make_label
+
+from ..common.dialog_base import BaseDialog
 
 
 class _RoomRow:
@@ -55,33 +57,27 @@ class _RoomRow:
                 or self.active() != self.original_active)
 
 
-class RoomManageDialog(QDialog):
+class RoomManageDialog(BaseDialog):
     def __init__(self, rooms: List[dict], parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("咨询室管理")
-        self.setModal(True)
         self.setMinimumWidth(520)
 
         self._rows: List[_RoomRow] = []
         self._new_rooms: List[Dict[str, Optional[str]]] = []
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(22, 20, 22, 18)
-        layout.setSpacing(12)
-        layout.addWidget(make_label("管理可预约的咨询室", "CardTitle", word_wrap=False))
-        layout.addWidget(make_hint("记录名称、位置与特点；改动在点「保存」后写入"))
+        # 可拖拽头部
+        self.set_header("管理可预约的咨询室", "记录名称、位置与特点；改动在点「保存」后写入")
 
-        self._list_box = QVBoxLayout()
-        self._list_box.setSpacing(8)
-        layout.addLayout(self._list_box)
+        # 咨询室列表放进滚动区（overflow-y: auto），内容多时内部纵向滚动
+        self._list_box = self.content_layout()
         self._rebuild_rows(rooms)
 
-        # ---- 新增区
-        layout.addSpacing(4)
-        layout.addWidget(make_label("新增咨询室", "Heading", word_wrap=False))
+        # ---- 新增区（固定在底部，不随列表滚动）
+        self.add_to_footer(make_label("新增咨询室", "Heading", word_wrap=False))
         self.new_name_edit = QLineEdit()
         self.new_name_edit.setPlaceholderText("名称（如：咨询室C）")
-        layout.addWidget(self.new_name_edit)
+        self.add_to_footer(self.new_name_edit)
         add_info = QHBoxLayout()
         add_info.setSpacing(8)
         self.new_location_edit = QLineEdit()
@@ -90,24 +86,28 @@ class RoomManageDialog(QDialog):
         self.new_features_edit.setPlaceholderText("特点（可选）")
         add_info.addWidget(self.new_location_edit, 1)
         add_info.addWidget(self.new_features_edit, 1)
-        layout.addLayout(add_info)
+        self.add_footer_layout(add_info)
         self.new_name_edit.returnPressed.connect(self._add_new)
         self.new_features_edit.returnPressed.connect(self._add_new)
         add_btn = QPushButton("添加")
         add_btn.setObjectName("GhostButton")
         add_btn.setFocusPolicy(Qt.StrongFocus)
         add_btn.clicked.connect(self._add_new)
-        layout.addWidget(add_btn, 0, Qt.AlignRight)
+        # 「添加」按钮靠右：用一层水平布局包裹
+        add_row = QHBoxLayout()
+        add_row.addStretch(1)
+        add_row.addWidget(add_btn)
+        self.add_footer_layout(add_row)
 
         self._new_label = make_hint("")
-        layout.addWidget(self._new_label)
+        self.add_to_footer(self._new_label)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText("保存")
         buttons.button(QDialogButtonBox.Cancel).setText("取消")
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.set_buttons(buttons)
 
     # ------------------------------------------------------------------ 行
     def _rebuild_rows(self, rooms: List[dict]) -> None:
@@ -126,6 +126,7 @@ class RoomManageDialog(QDialog):
 
     def _make_row(self, room: dict) -> QFrame:
         r = _RoomRow(room)
+        self._rows.append(r)   # 登记行对象：否则 updates/deletes 遍历空列表，保存不生效
         frame = QFrame()
         frame.setObjectName("Panel")
         lay = QVBoxLayout(frame)
@@ -149,7 +150,6 @@ class RoomManageDialog(QDialog):
         bottom.addWidget(r.features_edit, 1)
         lay.addLayout(bottom)
 
-        self._list_box.addWidget(frame)
         return frame
 
     def _mark_deleted(self, row: _RoomRow, frame: QFrame) -> None:

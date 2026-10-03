@@ -9,40 +9,35 @@ from __future__ import annotations
 from typing import List, Optional
 
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QGridLayout, QLabel, QVBoxLayout,
+    QCheckBox, QDialogButtonBox, QGridLayout,
 )
 
 from desktop_common.widgets import TextArea, make_error, make_label
 
 from ...core import enums
+from ..common.dialog_base import BaseDialog
 
 
-class ReplyEditDialog(QDialog):
+class ReplyEditDialog(BaseDialog):
     def __init__(self, parent=None, *, text: str = "",
                  scenes: Optional[List[str]] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("回复条目")
-        self.setModal(True)
         self.setMinimumWidth(460)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(22, 20, 22, 18)
-        layout.setSpacing(12)
-
         is_edit = bool(text)
-        layout.addWidget(make_label("编辑回复" if is_edit else "新建回复",
-                                    "CardTitle", word_wrap=False))
-        layout.addWidget(make_label(
-            "学生会在完成小测评后的结束页看到这段话，也可以是让心情变好的小技巧", "Hint"))
+        self.set_header(
+            "编辑回复" if is_edit else "新建回复",
+            "学生会在完成小测评后的结束页看到这段话，也可以是让心情变好的小技巧")
 
         self.text_area = TextArea(
             placeholder="写下回复内容…（语气温和，避免诊断性措辞）",
             min_height=130)
         self.text_area.set_text_value(text)
-        layout.addWidget(self.text_area)
+        self.add_to_content(self.text_area)
 
-        layout.addWidget(make_label("用于哪些场景（至少选一个）", "Body",
-                                    word_wrap=False))
+        self.add_to_content(make_label("用于哪些场景（至少选一个）", "Body",
+                                       word_wrap=False))
         self._scene_checks = {}
         grid = QGridLayout()
         grid.setHorizontalSpacing(18)
@@ -53,17 +48,17 @@ class ReplyEditDialog(QDialog):
             check.setChecked(key in selected)
             self._scene_checks[key] = check
             grid.addWidget(check, index // 2, index % 2)
-        layout.addLayout(grid)
+        self.add_content_layout(grid)
 
         self.error_label = make_error("")
-        layout.addWidget(self.error_label)
+        self.add_to_content(self.error_label)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText("保存")
         buttons.button(QDialogButtonBox.Cancel).setText("取消")
         buttons.accepted.connect(self._validate_and_accept)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.set_buttons(buttons)
 
     def _validate_and_accept(self) -> None:
         if not self.text_area.text_value():

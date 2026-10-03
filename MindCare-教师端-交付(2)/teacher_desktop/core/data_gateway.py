@@ -58,8 +58,8 @@ ACTION_REGISTRY: Dict[str, str] = {
     "rooms.delete":           "删除咨询室",
     "waitlist.join":          "把学生加入某时段候补",
     "waitlist.cancel":        "取消候补（退候补）",
-    "teachers.create":        "新建教师（含初始密码）",
-    "teachers.update":        "编辑教师（名称）",
+    "teachers.create":        "新建教师（含初始密码与工号）",
+    "teachers.update":        "编辑教师（名称/工号）",
     "teachers.reset_password": "重置教师密码",
     "teachers.delete":        "删除教师",
     "teachers.availability.set": "批量设定教师周期可用时段",
@@ -77,7 +77,7 @@ class DataGateway:
 
     def __init__(self, server: str) -> None:
         self.server = server
-        self.client = ApiClient(server)
+        self.client = ApiClient(server, role="teacher")
 
     # ================================================================ 待填充
     def read(self, resource: str, params: Optional[Dict[str, Any]] = None) -> Any:

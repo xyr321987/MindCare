@@ -43,25 +43,52 @@ __all__ = [
 
 # --------------------------------------------------------------------------- 调色板
 
-BG = "#F7F6F1"            # 页面主背景（温暖米白，见山规范）
-CARD = "#FFFFFF"          # 卡片背景（干净暖白）
-FIELD = "#F3EDE2"         # 输入/可编辑区底色（暖沙：用背景色差区分体系，替代硬边框）
-INK = "#3A3A38"           # **正文文字**（不用主色写正文）
-INK_SOFT = "#6E6A63"      # 次要文字
-INK_FADE = "#9A948A"      # 底层信息（危机热线等）的弱化字色
-LINE = "#E9E7DF"          # 分隔线 / 卡片边框（见山规范 1px 边框色）
-MIST = "#A8C5D6"          # 主色（雾蓝）：选中态填充、进度条、主按钮**底色**
+BG = "#F9F9F7"            # 页面主背景（清新米白）
+CARD = "#FFFFFF"          # 卡片背景（干净白）
+FIELD = "#FAFBFA"         # 输入/可编辑区底色（模块背景极浅绿白）
+INK = "#555555"           # **正文文字**（深灰）
+INK_SOFT = "#6E6E6E"      # 次要文字（≥4.5:1；用户给的 #888888 不达标，故加深一档）
+INK_FADE = "#888888"      # 辅助/弱化小字（用户指定 #888888，仅用于底部/热线等最弱信息）
+LINE = "#E9EEE9"          # 分隔线 / 卡片边框（浅绿灰）
+MIST = "#C8E6C9"          # 主色（浅绿）：选中态填充、进度条
 CORAL = "#F2B8A0"         # 辅助色（柔珊瑚）：P1 关注标记的**底色**，不是文字色
-SPROUT = "#B7D7B9"        # 平静 / 正向
-PRIMARY_INK = "#2F4A57"   # 雾蓝上的文字色（白字压在雾蓝上对比度不足）
-FOCUS_RING = "#7FA6BA"    # 焦点环（雾蓝加深，用于键盘可达样式）
-DANGER_SOFT = "#C9836B"   # 柔化的提示色（**不是刺眼红**，只用于错误文本，仍是深色字）
+SPROUT = "#A5D6A7"        # 嫩芽绿（平静 / 正向）
+PRIMARY_INK = "#2E5B3E"   # 标题深绿（压在浅绿上的文字）
+FOCUS_RING = "#81C784"    # 焦点环（山绿）
+DANGER_SOFT = "#C9836B"   # 柔化的提示色（错误文本，仍深色字）
 
-# --- 见山品牌色（第一轮 UI 还原：低饱和墨绿 + 浅灰绿 + 浅雾蓝 + 暖杏）--------
-BRAND = "#355B4C"           # 品牌主色（低饱和度墨绿）
-BRAND_SELECTED = "#DCE9DF"  # 选中状态（浅灰绿）
-AUX_MIST = "#E5EEF2"        # 辅助色（浅雾蓝）
-AUX_APRICOT = "#F4E5D6"     # 辅助色（暖杏）
+# --- 见山品牌色（清新绿：深绿 + 浅绿 + 极浅绿 + 纸张米黄）----------------------
+BRAND = "#4A7C59"           # 品牌深绿（按钮/标题）
+BRAND_SELECTED = "#C8E6C9"  # 选中状态（浅绿）
+AUX_MIST = "#E8F5E9"        # 辅助色（极浅绿：卡片点缀/阴影感）
+AUX_APRICOT = "#FFF8E1"     # 辅助色（纸张米黄）
+
+# --- 见山首页专用色（墨绿 + 暖米白；**仅首页**生效，不改其它页与教师端）--------
+# 依据 `jianshan-visual-design` §1：温柔、安静、治愈、自然。
+HOME_BG = "#F7F6F1"              # 首页暖米白底
+HOME_INK = "#3A3A38"             # 首页正文（深暖灰）
+HOME_INK_SOFT = "#6E6A63"        # 首页次要文字
+HOME_INK_FADE = "#9A948A"        # 首页弱化文字（署名/页脚）
+HOME_BRAND = "#355B4C"           # 首页墨绿（标题/箭头/插画描边）
+HOME_BRAND_DEEP = "#2C4E40"      # 墨绿深一档（箭头悬停）
+HOME_LINE = "#E9E7DF"            # 首页卡片边框
+HOME_TONE_QUESTIONNAIRE = "#E5EEF2"   # 问卷卡：雾蓝
+HOME_TONE_TREEHOLE = "#F4E5D6"        # 树洞卡：暖杏
+HOME_TONE_APPOINTMENT = "#DCE9DF"     # 预约卡：浅灰绿
+HOME_TONE_PROFILE = "#F0EDE4"         # 档案卡：暖米
+HOME_NOTE_BG = "#FFFDF6"             # 小纸条暖白纸
+HOME_NOTE_LINE = "#EDE7D8"           # 小纸条纸边
+
+# --- 登录页专用色（东方美学：雾青 / 浅湖蓝 / 米白 + 暖橙点缀；仅登录页）-------
+LOGIN_MIST = "#CFE2DD"        # 雾青（背景渐变顶部）
+LOGIN_LAKE = "#C7DDE4"        # 浅湖蓝（背景渐变中部）
+LOGIN_CREAM = "#F6F3EB"       # 米白（背景渐变底部）
+LOGIN_INK = "#355B4C"         # 深青绿（品牌 / 标题）
+LOGIN_INK_SOFT = "#6E8A80"    # 次要青灰
+LOGIN_INK_FADE = "#7A8A84"    # 弱化青灰
+LOGIN_WARM = "#F2CFA6"        # 暖橙点缀（晨阳）
+LOGIN_CARD_BG = "#B8FFFFFF"   # 磨砂玻璃卡片底（72% 白，半透明）
+LOGIN_CARD_LINE = "#E6FFFFFF" # 卡片描边（90% 白）
 
 #: 树洞「暮蓝」环境光渐变（自顶向下柔和暮色：传递夜间温暖的安全感）
 DUSK_TOP = "#E3ECF1"
@@ -79,22 +106,21 @@ SLOT_MINE_BG = "#DCEBE0"       # 我约的：嫩芽绿底（字用 INK -> 9.21:1
 SLOT_MINE_LINE = "#6E9A76"
 SLOT_PAST_BG = "#F2EEE6"       # 已经过去（禁用态，与 `QPushButton:disabled` 同款）
 
-# --- 学生端左侧导航（浅米白侧边栏；见山规范：品牌墨绿 + 浅灰绿选中态）--------
-NAV_BG = "#F3F1E9"          # 侧边导航底色（浅米白）
-NAV_INACTIVE = "#6E6A63"    # 未选中项文字（次要灰）
-NAV_ACTIVE_BG = "#DCE9DF"   # 选中项背景（浅灰绿圆角）
-NAV_ACTIVE_TEXT = "#355B4C" # 选中项文字（品牌墨绿）
-NAV_HOVER_BG = "#EAE7DD"    # 悬停背景（浅暖灰）
+# --- 学生端左侧导航（清新白侧边栏；浅绿选中态 + 标题深绿）----------------------
+NAV_BG = "#FAFBFA"          # 侧边导航底色（模块背景白）
+NAV_INACTIVE = "#6E6E6E"    # 未选中项文字（深灰）
+NAV_ACTIVE_BG = "#C8E6C9"   # 选中项背景（浅绿圆角）
+NAV_ACTIVE_TEXT = "#2E5B3E" # 选中项文字（标题深绿）
+NAV_HOVER_BG = "#E8F5E9"    # 悬停背景（极浅绿）
 
-# --- 情绪卡片（Q1）的色彩光晕 + 色温层 --------------------------------------
-# 三种情绪各自有独立的「光晕」底色 / 边界色（不是正文文字色，对比度仍由自检复算）。
-MOOD_HAPPY_BG = "#FBF0DC"    # 高兴：暖金光晕
-MOOD_HAPPY_LINE = "#E4C98F"
-MOOD_PLAIN_BG = "#EEF3F5"    # 平淡：雾蓝灰光晕
-MOOD_PLAIN_LINE = "#CBD9E0"
-MOOD_DOWN_BG = "#E7EEF2"     # 沮丧：冷调光晕
-MOOD_DOWN_LINE = "#B9C9D4"
-MOOD_TINT = "#3D5A6C"        # 色温层冷色（点「沮丧」时覆盖整屏的极浅冷调，靠 opacity 控制浓度）
+# --- 心情卡片（Q1）的色彩光晕（天气隐喻：晴天 / 多云 / 小雨）------------------
+MOOD_HAPPY_BG = "#FFF8E1"    # 晴天：纸张米黄光晕
+MOOD_HAPPY_LINE = "#FFD54F"  # 太阳黄
+MOOD_PLAIN_BG = "#F5F5F5"    # 多云：云朵白光晕
+MOOD_PLAIN_LINE = "#C9D4D8"  # 云朵灰
+MOOD_DOWN_BG = "#ECEFF1"     # 小雨：浅灰蓝光晕
+MOOD_DOWN_LINE = "#90A4AE"   # 雨云灰蓝
+MOOD_TINT = "#90A4AE"        # 色温层冷色（点「小雨」时覆盖整屏的极浅冷调）
 
 #: 供别的模块（含教师端）枚举主题变量，避免各处硬编码色值
 PALETTE: Dict[str, str] = {
@@ -186,8 +212,8 @@ QWidget {{
 QMainWindow, QDialog {{ background-color: {BG}; }}
 
 QLabel {{ background: transparent; color: {INK}; }}
-QLabel#Title      {{ font-size: {FONT_TITLE}px; font-weight: 600; color: {INK}; }}
-QLabel#Heading    {{ font-size: {FONT_HEADING}px; font-weight: 600; color: {INK}; }}
+QLabel#Title      {{ font-size: {FONT_TITLE}px; font-weight: 700; color: {PRIMARY_INK}; }}
+QLabel#Heading    {{ font-size: {FONT_HEADING}px; font-weight: 700; color: {PRIMARY_INK}; }}
 QLabel#Body       {{ font-size: {FONT_BODY}px; color: {INK}; }}
 QLabel#Hint       {{ font-size: {FONT_SMALL}px; color: {INK_SOFT}; }}
 QLabel#Error      {{ font-size: {FONT_SMALL}px; color: {DANGER_SOFT}; }}
@@ -200,7 +226,7 @@ QLabel#BadgeSoft  {{ font-size: {FONT_SMALL}px; color: {INK};
 QLabel#BadgeCalm  {{ font-size: {FONT_SMALL}px; color: {INK};
                      background-color: {SPROUT}; border-radius: {RADIUS_SMALL}px;
                      padding: 3px 10px; }}
-QLabel#CardTitle  {{ font-size: {FONT_HEADING}px; font-weight: 600; color: {INK}; }}
+QLabel#CardTitle  {{ font-size: {FONT_HEADING}px; font-weight: 700; color: {PRIMARY_INK}; }}
 
 /* ===== 卡片 ===== */
 QFrame#Card {{
@@ -226,19 +252,19 @@ QPushButton {{
     padding: 9px 18px;
     min-height: {MIN_TAP}px;
 }}
-QPushButton:hover   {{ background-color: #EDE4D6; }}
-QPushButton:pressed {{ background-color: #E6DCC9; }}
-QPushButton:disabled {{ color: {INK_FADE}; background-color: #F2EEE6; }}
+QPushButton:hover   {{ background-color: #E8F5E9; }}
+QPushButton:pressed {{ background-color: #C8E6C9; }}
+QPushButton:disabled {{ color: {INK_FADE}; background-color: #F2F5F2; }}
 
 QPushButton#PrimaryButton {{
-    background-color: {MIST};
-    color: {PRIMARY_INK};
+    background-color: {BRAND};
+    color: #FFFFFF;
     border: none;
     font-weight: 600;
 }}
-QPushButton#PrimaryButton:hover   {{ background-color: #9DBDD1; }}
-QPushButton#PrimaryButton:pressed {{ background-color: #93B4C9; }}
-QPushButton#PrimaryButton:disabled {{ background-color: #DCE6EC; color: {INK_FADE}; }}
+QPushButton#PrimaryButton:hover   {{ background-color: #3F6B4B; }}
+QPushButton#PrimaryButton:pressed {{ background-color: #35603F; }}
+QPushButton#PrimaryButton:disabled {{ background-color: #C8E6C9; color: #6E6E6E; }}
 
 QPushButton#GhostButton {{
     background-color: transparent;
@@ -407,6 +433,7 @@ QPushButton#ProfileViewButton:checked {{
 }}
 QLabel#NavUserName {{ font-size: 14px; font-weight: 600; color: {INK}; }}
 QLabel#NavUserClass {{ font-size: 12px; color: {INK_SOFT}; }}
+QLabel#NavUserArrow {{ font-size: 18px; color: {INK_FADE}; }}
 QWidget#NavUserCard {{ background: transparent; }}
 QLabel#NavAvatar {{
     background-color: {BRAND_SELECTED};
@@ -416,28 +443,29 @@ QLabel#NavAvatar {{
     font-size: 15px;
 }}
 
-/* ===== 见山首页 ===== */
-QWidget#HomePage {{ background: {BG}; }}
+/* ===== 见山首页（墨绿 + 暖米白；仅首页，不改其它页）===== */
+QWidget#HomePage {{ background: {HOME_BG}; }}
 QWidget#HomeScroll, QWidget#HomeScrollContent {{ background: transparent; }}
-QLabel#HomeHello {{ font-size: 30px; font-weight: 600; color: {INK}; }}
-QLabel#HomeSubtitle {{ font-size: 14px; color: {INK_SOFT}; }}
-QLabel#HomeSectionTitle {{ font-size: 20px; font-weight: 600; color: {INK}; }}
+QWidget#SvgArt, QWidget#HomeWelcomeArt {{ background: transparent; }}
+QLabel#HomeHello {{ font-size: 30px; font-weight: 700; color: {HOME_BRAND}; }}
+QLabel#HomeSubtitle {{ font-size: 14px; color: {HOME_INK_SOFT}; }}
+QLabel#HomeSectionTitle {{ font-size: 20px; font-weight: 700; color: {HOME_INK}; }}
 QFrame#HomeFeatureCard {{
     background-color: {CARD};
-    border: 1px solid {LINE};
+    border: 1px solid {HOME_LINE};
     border-radius: 16px;
 }}
 QFrame#HomeFeatureCard:hover {{
-    border: 1px solid {BRAND_SELECTED};
+    border: 1px solid {HOME_BRAND};
 }}
-QFrame#HomeFeatureCard[tone="questionnaire"] {{ background-color: {AUX_MIST}; }}
-QFrame#HomeFeatureCard[tone="treehole"] {{ background-color: {AUX_APRICOT}; }}
-QFrame#HomeFeatureCard[tone="appointment"] {{ background-color: {BRAND_SELECTED}; }}
-QFrame#HomeFeatureCard[tone="profile"] {{ background-color: #F0EDE4; }}
-QLabel#HomeCardTitle {{ font-size: 18px; font-weight: 500; color: {INK}; }}
-QLabel#HomeCardDesc {{ font-size: 14px; color: {INK_SOFT}; }}
+QFrame#HomeFeatureCard[tone="questionnaire"] {{ background-color: {HOME_TONE_QUESTIONNAIRE}; }}
+QFrame#HomeFeatureCard[tone="treehole"] {{ background-color: {HOME_TONE_TREEHOLE}; }}
+QFrame#HomeFeatureCard[tone="appointment"] {{ background-color: {HOME_TONE_APPOINTMENT}; }}
+QFrame#HomeFeatureCard[tone="profile"] {{ background-color: {HOME_TONE_PROFILE}; }}
+QLabel#HomeCardTitle {{ font-size: 18px; font-weight: 600; color: {HOME_INK}; }}
+QLabel#HomeCardDesc {{ font-size: 14px; color: {HOME_INK_SOFT}; }}
 QPushButton#HomeCardArrow {{
-    background-color: {BRAND};
+    background-color: {HOME_BRAND};
     color: #FFFFFF;
     border: none;
     border-radius: 17px;
@@ -448,28 +476,17 @@ QPushButton#HomeCardArrow {{
     padding: 0;
     font-size: 16px;
 }}
-QPushButton#HomeCardArrow:hover {{ background-color: #2E5044; }}
+QPushButton#HomeCardArrow:hover {{ background-color: {HOME_BRAND_DEEP}; }}
 QFrame#HomeNote {{
-    background-color: #FFFDF6;
-    border: 1px solid #EDE7D8;
+    background-color: {HOME_NOTE_BG};
+    border: 1px solid {HOME_NOTE_LINE};
     border-radius: 16px;
 }}
-QLabel#HomeNoteTitle {{ font-size: 20px; font-weight: 600; color: {INK}; }}
-QLabel#HomeNoteText {{ font-size: 14px; color: {INK}; }}
-QLabel#HomeNoteSign {{ font-size: 13px; color: {INK_SOFT}; }}
-QFrame#HomeActivity {{
-    background-color: {CARD};
-    border: 1px solid {LINE};
-    border-radius: 16px;
-}}
-QFrame#HomeActivityRow {{
-    background: transparent;
-    border: none;
-    border-bottom: 1px solid {LINE};
-}}
-QLabel#HomeActivityText {{ font-size: 14px; color: {INK}; }}
-QLabel#HomeActivityTime {{ font-size: 12px; color: {INK_FADE}; }}
-QLabel#HomeFooter {{ font-size: 13px; color: {INK_FADE}; }}
+QLabel#HomeNoteTitle {{ font-size: 20px; font-weight: 700; color: {HOME_INK}; }}
+QLabel#HomeNoteText {{ font-size: 14px; color: {HOME_INK}; }}
+QLabel#HomeNoteSign {{ font-size: 13px; color: {HOME_INK_FADE}; }}
+QFrame#HomeWave {{ background-color: {HOME_BRAND}; border: none; border-radius: 2px; }}
+QLabel#HomeFooter {{ font-size: 13px; color: {HOME_INK_FADE}; }}
 
 /* ===== 列表 ===== */
 QListWidget, QListView, QScrollArea {{
@@ -577,6 +594,56 @@ QFrame#SwatchTaken    {{ background-color: {SLOT_TAKEN_BG};
                          border: 1px solid {SLOT_TAKEN_LINE}; border-radius: 5px; }}
 QFrame#SwatchMine     {{ background-color: {SLOT_MINE_BG};
                          border: 2px solid {SLOT_MINE_LINE}; border-radius: 5px; }}
+
+/* ===== 登录页（东方美学：雾青/浅湖蓝/米白 + 暖橙；仅登录页）===== */
+QWidget#LoginView {{ background: transparent; }}
+QScrollArea#LoginScroll, QWidget#LoginScrollContent {{ background: transparent; border: none; }}
+QLabel#LoginBrand {{ font-size: 26px; font-weight: 600; color: {LOGIN_INK}; }}
+QLabel#LoginBrandEn {{ font-size: 15px; font-weight: 500; color: {LOGIN_INK_SOFT}; letter-spacing: 2px; }}
+QLabel#LoginBrandTagline {{ font-size: 13px; color: {LOGIN_INK_FADE}; }}
+QFrame#LoginCard {{
+    background-color: {LOGIN_CARD_BG};
+    border: 1px solid {LOGIN_CARD_LINE};
+    border-radius: 24px;
+}}
+QFrame#LoginCard QLabel {{ background: transparent; }}
+QFrame#LoginCard QLineEdit {{
+    background-color: #F5F8F6;
+    border: 1px solid #DDE7E3;
+    border-radius: 14px;
+    padding: 12px 16px;
+    min-height: 34px;
+    color: {INK};
+}}
+QFrame#LoginCard QLineEdit:focus {{
+    border: 2px solid {LOGIN_INK_SOFT};
+    background-color: #FFFFFF;
+}}
+QPushButton#LoginButton {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #5B9A7B, stop:1 #355B4C);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 14px;
+    font-weight: 600;
+    font-size: 15px;
+    min-height: 42px;
+}}
+QPushButton#LoginButton:hover {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #4C8A6B, stop:1 #2C4E40);
+}}
+QPushButton#LoginButton:pressed {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                                stop:0 #3E7A5C, stop:1 #243F34);
+}}
+QPushButton#ToggleRegisterButton {{
+    background: transparent;
+    border: none;
+    color: {LOGIN_INK_SOFT};
+    font-size: 13px;
+}}
+QPushButton#ToggleRegisterButton:hover {{ color: {LOGIN_INK}; }}
 """
 
 

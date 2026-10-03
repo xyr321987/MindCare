@@ -234,8 +234,11 @@ class NoticePage(_FlowPage):
 
     page_id = "notice"
     title_key = "s.notice.title"
+    subtitle_key = "s.notice.subtitle"
     #: 实际渲染的告知条目（见类 docstring 的 v1.0 降级说明）
     item_indexes = (1, 2, 3)
+    #: 「想直接预约」：跳过问卷直接跳去独立预约 Tab
+    appointment_requested = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
@@ -251,6 +254,7 @@ class NoticePage(_FlowPage):
         self.agree_button = make_primary_button(COPY["s.notice.action.agree"])
         self.agree_button.clicked.connect(self.next_requested.emit)
         self.exit_button = make_ghost_button(COPY["s.notice.action.exit"])
+        self.exit_button.clicked.connect(self.appointment_requested.emit)
         self.footer_layout.insertWidget(0, self.exit_button)
         self.footer_layout.addWidget(self.agree_button)
 
@@ -290,7 +294,7 @@ class MoodCardGroup(QWidget):
 
     changed = Signal(str)
 
-    def __init__(self, options: list[tuple[str, str, str]],
+    def __init__(self, options: list[tuple[str, str, str, str]],
                  parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
         self._buttons: list = []
@@ -305,8 +309,8 @@ class MoodCardGroup(QWidget):
 
         # 三张卡片竖着一列、水平居中：每张卡外侧各放一个 1:2:1 的伸缩，
         # 让卡片占约一半宽且左右留白居中，三张卡宽度一致。
-        for index, (value, label, emoji) in enumerate(options):
-            button = self._make_card(emoji, label, value)
+        for index, (value, label, emoji, desc) in enumerate(options):
+            button = self._make_card(emoji, label, desc, value)
             self._group.addButton(button, index)
             self._buttons.append(button)
             self._values.append(value)
@@ -318,14 +322,14 @@ class MoodCardGroup(QWidget):
             row.addStretch(1)
             root.addLayout(row)
 
-    def _make_card(self, emoji: str, label: str, mood: str) -> QPushButton:
+    def _make_card(self, emoji: str, label: str, desc: str, mood: str) -> QPushButton:
         button = QPushButton(parent=self)
         button.setObjectName("MoodCard")
         #: 动态属性 `mood`（QSS 用 `[mood="…"]` 命中各自的光晕底色/边界色）。
         button.setProperty("mood", mood)
-        #: 用「emoji 换行 文字」的原始文本，而不是在按钮里嵌 QLabel 子控件——
+        #: 用「emoji 换行 天气名 换行 描述」的原始文本，而不是在按钮里嵌 QLabel 子控件——
         #: QPushButton 的绘制会盖住子控件，导致 emoji/文字消失（见预览截图问题）。
-        button.setText(f"{emoji}\n{label}")
+        button.setText(f"{emoji}\n{label}\n{desc}")
         button.setCheckable(True)
         button.setCursor(Qt.PointingHandCursor)
         button.setFocusPolicy(Qt.StrongFocus)
@@ -369,7 +373,7 @@ class MoodPage(_ChoicePage):
 
     def _build_group(self):
         return MoodCardGroup([
-            (value, COPY[key], COPY[f"{key}.emoji"])
+            (value, COPY[key], COPY[f"{key}.emoji"], COPY[f"{key}.desc"])
             for value, key in self.options_spec
         ])
 
@@ -515,11 +519,14 @@ class ExplorePage(_FlowPage):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
+        self.back_button.setText(COPY["s.explore.action.back"])
         self.body.add(make_hint(COPY["s.explore.hint"]))
         self.group = MultiChoiceGroup(
-            [(value, COPY[key]) for value, key in self.options_spec])
+            [(value, COPY[key] + "\n" + COPY[f"{key}.desc"])
+             for value, key in self.options_spec])
         self.body.add(self.group)
-        self.next_button = make_primary_button(COPY["c.action.next"])
+        self.body.add(make_hint(COPY["s.explore.hint.bottom"]))
+        self.next_button = make_primary_button(COPY["s.explore.action.next"])
         self.next_button.clicked.connect(self._on_next)
         self.footer_layout.addWidget(self.next_button)
 
@@ -559,6 +566,7 @@ class DetailPage(_FlowPage):
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
+        self.back_button.setText(COPY["s.q3.action.back"])
         # 空态只显示引导浮层（``s.q3.guide.*``），不再叠加原生占位符，避免两套
         # 文案重叠、让本就低落的学生更无从下笔。
         self.area = TextArea(min_height=200)
@@ -572,8 +580,9 @@ class DetailPage(_FlowPage):
         self._guide = self._build_guide()
         grid.addWidget(self._guide, 0, 0, Qt.AlignTop | Qt.AlignLeft)
         self.body.add(holder)
+        self.body.add(make_hint(COPY["s.q3.hint.bottom"]))
 
-        self.submit_button = make_primary_button(COPY["s.help.title"])
+        self.submit_button = make_primary_button(COPY["s.q3.action.next"])
         self.submit_button.clicked.connect(self._on_submit)
         self.footer_layout.addWidget(self.submit_button)
         self.area.textChanged.connect(self._on_text_changed)
@@ -584,7 +593,8 @@ class DetailPage(_FlowPage):
         inner = QVBoxLayout(guide)
         inner.setContentsMargins(14, 12, 14, 12)
         inner.setSpacing(6)
-        for key in ("s.q3.guide.1", "s.q3.guide.2", "s.q3.guide.3"):
+        for key in ("s.q3.guide.title", "s.q3.guide.1", "s.q3.guide.2",
+                    "s.q3.guide.3", "s.q3.guide.4", "s.q3.guide.example"):
             label = QLabel(COPY[key])
             label.setObjectName("DetailGuide")
             label.setWordWrap(True)
@@ -609,12 +619,9 @@ class DetailPage(_FlowPage):
     detail_submitted = Signal(str)
 
     def _on_submit(self) -> None:
-        text = self.area.text_value()
-        if not text:
-            self.set_error(COPY["s.q3.error.empty"])
-            return
+        # 「具体内容」可选：空文本也放行，先让学生够得着「要不要让老师陪」这一步
         self.set_error("")
-        self.detail_submitted.emit(text)
+        self.detail_submitted.emit(self.area.text_value() or "")
 
     def reset(self) -> None:
         self.area.set_text_value("")
@@ -628,10 +635,11 @@ class HelpPage(_FlowPage):
 
     page_id = "help"
     title_key = "s.help.title"
+    subtitle_key = "s.help.subtitle"
 
     def __init__(self, parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
-        self.body.add(make_body(COPY["s.help.body"]))
+        self.back_button.setText(COPY["s.help.action.back"])
         self.body.add(
             make_hint(f"{COPY['s.help.option.request']}：" +
                       COPY["s.help.option.request.note"])
@@ -649,7 +657,7 @@ class HelpPage(_FlowPage):
         self.body.add(self.selection_note)
         self.body.add(make_hint(COPY["s.help.hint"]))
         self.group.changed.connect(self._on_changed)
-        self.submit_button = make_primary_button(COPY["c.action.submit"])
+        self.submit_button = make_primary_button(COPY["s.help.action.next"])
         self.submit_button.clicked.connect(self._on_submit)
         self.footer_layout.addWidget(self.submit_button)
 
@@ -793,6 +801,7 @@ class AppointmentPage(_FlowPage):
         self.room_combo = QComboBox()
         self.room_combo.setObjectName("AppointmentRoomCombo")
         self.room_combo.setFocusPolicy(Qt.StrongFocus)
+        self.room_combo.addItem(COPY["s.appointment.room.none"], None)
         inner.addWidget(self.room_combo)
         self.room_hint = make_hint("")
         self.room_hint.setObjectName("AppointmentRoomHint")
@@ -895,38 +904,46 @@ class AppointmentPage(_FlowPage):
     def student_id(self) -> str:
         return str(self.profile().get("id") or "")
 
-    def _refresh(self) -> None:
-        """重读事实源并重刷 56 个格子（**唯一的刷新入口**）。
+    def _slot_data(self) -> Tuple[set, set, set]:
+        """一次读齐三路事实源：`(blocked, mine, taken)`。
 
         HTTP 模式：`blocked`/`mine` 来自 `RemoteSchedule`；学生端读不到他人预约
         （`GET /appointments` 对学生 1002），故 `taken` 恒为空（谁约了不暴露给学生）。
         本地模式：三路都来自本地 JSON Lines 文件。
         """
         if self._remote is not None:
-            blocked = self._remote.blocked_slots()
-            mine = self._remote.mine_slots()
-            taken: set = set()
-        else:
-            blocked = schedule_store.blocked_slots()
-            mine = appt_store.appointment_slots(student_id=self.student_id()) \
-                if self.student_id() else {}
-            taken = appt_store.appointment_slots()
+            return self._remote.blocked_slots(), self._remote.mine_slots(), set()
+        blocked = schedule_store.blocked_slots()
+        mine = appt_store.appointment_slots(student_id=self.student_id()) \
+            if self.student_id() else {}
+        taken = appt_store.appointment_slots()
+        return blocked, mine, taken
+
+    def _cell_state(self, blocked: set, mine: set, taken: set,
+                    period: int, day: Tuple[int, int, int]
+                    ) -> Tuple[str, Optional[str], Optional[bool]]:
+        """单个格子的状态（**唯一的判定点**，`_refresh` 与自动预选共用）。"""
+        year, month, day_no = day
         today = date.today()
+        slot = schedule_mod.slot_id(year, month, day_no, period)
+        if (year, month, day_no) < (today.year, today.month, today.day) \
+                or schedule_mod.is_past_slot(year, month, day_no, period, now=today):
+            return "past", "", False
+        if slot in blocked:
+            return "blocked", None, False
+        if slot in mine:
+            return "mine", None, True
+        if slot in taken:
+            return "taken", None, False
+        return "free", None, True
+
+    def _refresh(self) -> None:
+        """重读事实源并重刷 56 个格子（**唯一的刷新入口**）。"""
+        blocked, mine, taken = self._slot_data()
 
         def state_of(period: int, _column: int,
                      day: Tuple[int, int, int]) -> Tuple[str, Optional[str], Optional[bool]]:
-            year, month, day_no = day
-            slot = schedule_mod.slot_id(year, month, day_no, period)
-            if (year, month, day_no) < (today.year, today.month, today.day) \
-                    or schedule_mod.is_past_slot(year, month, day_no, period, now=today):
-                return "past", "", False
-            if slot in blocked:
-                return "blocked", None, False
-            if slot in mine:
-                return "mine", None, True
-            if slot in taken:
-                return "taken", None, False
-            return "free", None, True
+            return self._cell_state(blocked, mine, taken, period, day)
 
         self.board.apply_states(state_of)
         self._render_selected()
@@ -940,6 +957,25 @@ class AppointmentPage(_FlowPage):
         self._render_selected()
         self._refresh_teachers()
         self._refresh_rooms()
+
+    def _autoselect_first_free(self) -> None:
+        """进入页面时自动选中第一个可约格子，顺带触发老师/咨询室下拉框拉取。
+
+        否则两个下拉框要等学生手点时间格才出现，看起来像「没得选择」。整周都是
+        过去/停诊/已约时什么都不做，占位项会引导学生换一周再选。
+        """
+        blocked, mine, taken = self._slot_data()
+        for column in range(schedule_mod.WEEKDAY_COUNT):
+            day = self.board.date_at(column)
+            if day is None:
+                continue
+            for period in range(schedule_mod.PERIOD_INDEX_MIN,
+                                schedule_mod.PERIOD_INDEX_MAX + 1):
+                _state, _text, clickable = self._cell_state(
+                    blocked, mine, taken, period, day)
+                if clickable:
+                    self._on_cell(period, column)
+                    return
 
     def _refresh_teachers(self) -> None:
         """选中格子后拉取该时段「可预约老师」，填充下拉框（本地模式/未选则不拉）。"""
@@ -1016,7 +1052,13 @@ class AppointmentPage(_FlowPage):
             self.room_combo.setCurrentIndex(0)   # 必选：自动选中第一间可用
 
     def _on_rooms_failed(self, _error: Any) -> None:
-        self.room_hint.setVisible(False)
+        # 查询失败不弹错：放回占位项并提示换时间，避免下拉框留白
+        self.room_combo.blockSignals(True)
+        self.room_combo.clear()
+        self.room_combo.addItem(COPY["s.appointment.room.none"], None)
+        self.room_combo.blockSignals(False)
+        self.room_hint.setText(COPY["s.appointment.room.empty"])
+        self.room_hint.setVisible(True)
 
     def _render_selected(self) -> None:
         """刷新"已选："那一行（选中格里那个格子的文字也随之更新）。"""
@@ -1132,6 +1174,9 @@ class AppointmentPage(_FlowPage):
             str(profile.get(key) or "") for key in self._info_values))
         self._refresh()
         self.start_sync()
+        # 进页就自动选中第一个可约格子，让老师/咨询室下拉框立即有内容可看
+        if self._selected is None:
+            self._autoselect_first_free()
 
     def reset(self) -> None:
         """清掉选择、取消分享勾选、停同步（问卷整体 reset 时调用）。"""
@@ -1149,6 +1194,7 @@ class AppointmentPage(_FlowPage):
         self.teacher_hint.setVisible(False)
         self.room_combo.blockSignals(True)
         self.room_combo.clear()
+        self.room_combo.addItem(COPY["s.appointment.room.none"], None)
         self.room_combo.blockSignals(False)
         self.room_hint.setVisible(False)
         self.selected_label.setText(COPY["s.appointment.selected.none"])

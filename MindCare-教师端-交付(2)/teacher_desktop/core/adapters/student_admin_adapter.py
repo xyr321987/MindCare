@@ -2,6 +2,8 @@
 """学生管理适配器：病史标记 / 重置密码（统一走 DataGateway）。"""
 from __future__ import annotations
 
+from typing import Optional
+
 from .base import StudentAdminAdapter
 from ..data_gateway import DataGateway
 
@@ -12,9 +14,11 @@ class HttpStudentAdminAdapter(StudentAdminAdapter):
     def __init__(self, gateway: DataGateway) -> None:
         self.gateway = gateway
 
-    def set_history(self, student_id: str, has_history: bool) -> dict:
+    def set_history(self, student_id: str, has_history: bool,
+                    history_text: Optional[str] = None) -> dict:
         return self.gateway.write("students.set_history", {
             "student_id": student_id, "has_history": bool(has_history),
+            "history": history_text,
         })
 
     def reset_password(self, student_id: str, new_password: str) -> dict:

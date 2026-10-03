@@ -247,6 +247,9 @@ class Handler(BaseHTTPRequestHandler):
 
 class ThreadedServer(ThreadingHTTPServer):
     daemon_threads = True
+    # 关闭端口复用（Windows 下 SO_REUSEADDR 会让多个旧服务并存、请求随机打到旧进程，
+    # 造成"代码已更新但接口 404/字段缺失"的假象）。端口被占时直接报错，绝不并存。
+    allow_reuse_address = False
 
     def __init__(self, addr, app: App):
         super().__init__(addr, Handler)

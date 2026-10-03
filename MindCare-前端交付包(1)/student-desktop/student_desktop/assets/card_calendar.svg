@@ -4,5 +4,5 @@
   <line x1="48" y1="22" x2="48" y2="40" stroke="#355B4C" stroke-width="2.6" stroke-linecap="round"/>
   <line x1="92" y1="22" x2="92" y2="40" stroke="#355B4C" stroke-width="2.6" stroke-linecap="round"/>
   <path d="M70 70 c-8 -6 -12 -10 -12 -14 a6 6 0 0 1 12 -3 a6 6 0 0 1 12 3 c0 4 -4 8 -12 14 Z" fill="#C9836B"/>
-  <circle cx="112" cy="26" r="4" fill="#E9C98F"/>
+  <circle cx="112" cy="26" r="4" fill="#EFC14E"/>
 </svg>

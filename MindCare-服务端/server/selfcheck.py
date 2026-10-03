@@ -85,6 +85,18 @@ def main() -> int:
     tkt = db.query_one("SELECT * FROM tickets WHERE student_id='stu_2023001' AND status='pending'")
     ok(tkt is not None, "down+求助 自动建 ticket(pending)")
 
+    # 8.5 detail 已改为可选：down 不填「具体内容」仍成功；但 cause_category 仍必填
+    r = call("POST", "/questionnaire/submissions", token=stu_token,
+             body={"record_id": "rec_down_nodetail", "mood": "down", "plain_note": None,
+                   "cause_category": "family", "detail": None, "request_help": False,
+                   "consent_share": False, "consent_ts": None})
+    ok(r.get("result_scene") == "self_care", "down 不填 detail → self_care（detail 已可选）")
+    expect_err("POST", "/questionnaire/submissions",
+               {"record_id": "rec_down_nocause", "mood": "down", "plain_note": None,
+                "cause_category": None, "detail": None, "request_help": False,
+                "consent_share": False, "consent_ts": None},
+               stu_token, 2001, "down 缺 cause_category 仍被拒（cause 仍必填）")
+
     # 9 幂等：同 record_id 重发不重复落库
     call("POST", "/questionnaire/submissions", token=stu_token,
          body={"record_id": "rec_happy1", "mood": "happy", "plain_note": None,
@@ -311,6 +323,29 @@ def main() -> int:
     ok(call("POST", "/db/write", token=tea_token, body={"action": "teachers.delete",
             "payload": {"teacher_id": tc["teacher_id"]}}).get("teacher_id") == tc["teacher_id"],
        "删除非预置教师")
+
+    # 30.5 删除教师级联清理：预约/停诊/可用时间/凭证/身份全部消失，不误删他人
+    tc2 = call("POST", "/db/write", token=tea_token, body={"action": "teachers.create",
+               "payload": {"name": "待删教师", "password": "abcd1234"}})
+    tid2 = tc2["teacher_id"]
+    call("POST", "/db/write", token=tea_token, body={"action": "appointments.schedule",
+         "payload": {"student_id": "stu_2023002", "year": "2026", "month": "12", "day": "20",
+                     "time": "10:00", "teacher_id": tid2, "room_id": "rm_default"}})
+    call("POST", "/db/write", token=tea_token, body={"action": "blocks.batch_set",
+         "payload": {"items": [{"year": "2026", "month": "12", "day": "21", "period": "3"}],
+                     "active": True, "reason": "测试停诊", "teacher_id": tid2}})
+    call("POST", "/db/write", token=tea_token, body={"action": "teachers.availability.set",
+         "payload": {"teacher_id": tid2, "items": [{"weekday": 1, "period": 3, "active": False}]}})
+    call("POST", "/db/write", token=tea_token, body={"action": "teachers.delete",
+         "payload": {"teacher_id": tid2}})
+    gone = (
+        db.query_one("SELECT COUNT(*) c FROM appointments WHERE teacher_id=?", (tid2,))["c"] == 0
+        and db.query_one("SELECT COUNT(*) c FROM blocks WHERE teacher_id=?", (tid2,))["c"] == 0
+        and db.query_one("SELECT COUNT(*) c FROM teacher_availability WHERE teacher_id=?", (tid2,))["c"] == 0
+        and db.query_one("SELECT COUNT(*) c FROM teacher_credentials WHERE teacher_id=?", (tid2,))["c"] == 0
+        and db.query_one("SELECT COUNT(*) c FROM teachers WHERE teacher_id=?", (tid2,))["c"] == 0
+    )
+    ok(gone, "删除教师级联清理：预约/停诊/可用时间/凭证/身份全部消失")
 
     # 31 教师周期可用性冲突（RFC 7953 式）
     wd11 = sched.weekday_from_date(2026, 12, 11)

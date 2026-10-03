@@ -75,6 +75,8 @@ class StudentRow(QFrame):
         for text, obj_name in self._chip_specs(item):
             chip = QLabel(text)
             chip.setObjectName(obj_name)
+            if text == "病史" and item.flags.history_text:
+                chip.setToolTip(str(item.flags.history_text))
             chips.addWidget(chip)
         if not item.flags or not self._chip_specs(item):
             chips.addWidget(make_label("—", "Body", word_wrap=False))

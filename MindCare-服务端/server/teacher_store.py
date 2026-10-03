@@ -20,6 +20,7 @@ from . import schedule as sched
 TEACHER_SCHEMA = """
 CREATE TABLE IF NOT EXISTS teachers (
     teacher_id TEXT PRIMARY KEY,
+    teacher_no TEXT UNIQUE,
     name       TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS teacher_credentials (
@@ -56,10 +57,14 @@ class TeacherStore:
 
     # ------------------------------------------------------------------ 身份
     def list_all(self) -> List[Dict[str, Any]]:
-        return self.db.query("SELECT teacher_id, name FROM teachers ORDER BY teacher_id")
+        return self.db.query("SELECT teacher_id, teacher_no, name FROM teachers ORDER BY teacher_id")
 
     def get(self, teacher_id: str) -> Optional[Dict[str, Any]]:
         return self.db.query_one("SELECT * FROM teachers WHERE teacher_id=?", (teacher_id,))
+
+    def get_by_no(self, teacher_no: str) -> Optional[Dict[str, Any]]:
+        """按工号查教师（登录用）。工号是业务键，可编辑、唯一。"""
+        return self.db.query_one("SELECT * FROM teachers WHERE teacher_no=?", (teacher_no,))
 
     def get_name(self, teacher_id: str) -> Optional[str]:
         row = self.db.query_one("SELECT name FROM teachers WHERE teacher_id=?", (teacher_id,))
@@ -68,24 +73,38 @@ class TeacherStore:
     def name_map(self) -> Dict[str, str]:
         return {r["teacher_id"]: r["name"] for r in self.list_all()}
 
-    def create(self, name: str, password: str) -> Dict[str, Any]:
-        """新建教师 + 凭证（单事务）。"""
+    def create(self, name: str, password: str,
+               teacher_no: Optional[str] = None) -> Dict[str, Any]:
+        """新建教师 + 凭证（单事务）。工号留空则自动生成（= 内部 id）。"""
         teacher_id = _new_id("tch_")
+        no = (teacher_no or "").strip() or teacher_id
         salt, digest = self._hash(password)
 
         def _do(cur):
-            cur.execute("INSERT INTO teachers(teacher_id, name) VALUES(?,?)",
-                        (teacher_id, name))
+            cur.execute("INSERT INTO teachers(teacher_id, teacher_no, name) VALUES(?,?,?)",
+                        (teacher_id, no, name))
             cur.execute(
                 "INSERT INTO teacher_credentials(teacher_id, password_hash, salt)"
                 " VALUES(?,?,?)", (teacher_id, digest, salt))
         self.db.transaction(_do)
-        return {"teacher_id": teacher_id, "name": name}
+        return {"teacher_id": teacher_id, "teacher_no": no, "name": name}
 
-    def rename(self, teacher_id: str, name: str) -> Optional[Dict[str, Any]]:
+    def rename(self, teacher_id: str, name: Optional[str] = None,
+               teacher_no: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        """改姓名 / 工号（传哪个改哪个；工号唯一，重复抛 ValueError）。"""
         if not self.get(teacher_id):
             return None
-        self.db.execute("UPDATE teachers SET name=? WHERE teacher_id=?", (name, teacher_id))
+        if name is not None:
+            self.db.execute("UPDATE teachers SET name=? WHERE teacher_id=?",
+                            (str(name).strip(), teacher_id))
+        if teacher_no is not None:
+            no = str(teacher_no).strip()
+            if not no:
+                raise ValueError("工号不能为空")
+            dup = self.get_by_no(no)
+            if dup and dup["teacher_id"] != teacher_id:
+                raise ValueError("工号已存在")
+            self.db.execute("UPDATE teachers SET teacher_no=? WHERE teacher_id=?", (no, teacher_id))
         self.db.commit()
         return self.get(teacher_id)
 
@@ -156,8 +175,8 @@ class TeacherStore:
     def ensure_seed(self) -> None:
         if not self.get(PRESET_TEACHER_ID):
             salt, digest = self._hash(PRESET_TEACHER_PASSWORD)
-            self.db.execute("INSERT INTO teachers(teacher_id, name) VALUES(?,?)",
-                            (PRESET_TEACHER_ID, PRESET_TEACHER_NAME))
+            self.db.execute("INSERT INTO teachers(teacher_id, teacher_no, name) VALUES(?,?,?)",
+                            (PRESET_TEACHER_ID, PRESET_TEACHER_ID, PRESET_TEACHER_NAME))
             self.db.execute(
                 "INSERT INTO teacher_credentials(teacher_id, password_hash, salt)"
                 " VALUES(?,?,?)", (PRESET_TEACHER_ID, digest, salt))

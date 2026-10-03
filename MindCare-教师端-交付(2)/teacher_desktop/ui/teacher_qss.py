@@ -75,6 +75,13 @@ QFrame#Panel {{
 }}
 QLabel#TableHead {{ font-size: {T.FONT_SMALL}px; color: {T.INK_SOFT}; }}
 
+/* ================= 弹窗拖拽头部 ================= */
+QFrame#DialogHeader {{
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid {T.LINE};
+}}
+
 /* ================= 分诊台：学生行 ================= */
 QFrame#StudentRow {{
     background-color: {T.CARD};
@@ -308,4 +315,23 @@ QPushButton#CalCell[state="block"] {{
     border: 1px solid {WARN};
 }}
 QPushButton#CalCell[state="free"]:hover {{ border-color: {T.MIST}; }}
+
+/* ================= 数据分析 ================= */
+QPushButton#RangeChip {{
+    background-color: transparent;
+    color: {T.INK_SOFT};
+    border: 1px solid {T.LINE};
+    border-radius: 12px;
+    padding: 5px 14px;
+    min-height: 30px;
+    font-size: {T.FONT_SMALL}px;
+}}
+QPushButton#RangeChip:hover {{ border-color: {T.MIST}; color: {T.PRIMARY_INK}; }}
+QPushButton#RangeChip:checked {{
+    background-color: {T.MIST};
+    color: {T.PRIMARY_INK};
+    border-color: {T.MIST};
+    font-weight: 600;
+}}
+QLabel#RingValue {{ font-size: 22px; font-weight: 600; color: {T.INK}; }}
 """

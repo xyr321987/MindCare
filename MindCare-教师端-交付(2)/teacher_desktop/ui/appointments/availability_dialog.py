@@ -8,33 +8,30 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Tuple
 
 from PySide6.QtWidgets import (
-    QCheckBox, QDialog, QDialogButtonBox, QGridLayout, QHBoxLayout,
-    QPushButton, QVBoxLayout,
+    QCheckBox, QDialogButtonBox, QGridLayout, QHBoxLayout, QPushButton,
 )
 
 from desktop_common.widgets import make_label
+
+from ..common.dialog_base import BaseDialog
 
 _WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 _PERIODS = [f"第{i}节" for i in range(1, 9)]
 
 
-class AvailabilityDialog(QDialog):
+class AvailabilityDialog(BaseDialog):
     def __init__(self, teacher_name: str, availability: List[dict],
                  parent: Optional[QDialog] = None) -> None:
         super().__init__(parent)
         self.setWindowTitle("可用时段")
-        self.setModal(True)
         self.setMinimumWidth(640)
+
+        self.set_header(f"{teacher_name} 的每周可用时段",
+                        "勾选 = 可约；取消勾选 = 该节次不可约")
 
         self._checks: Dict[Tuple[int, int], QCheckBox] = {}
         unavailable = {(int(a.get("weekday")), int(a.get("period")))
                        for a in availability if not bool(a.get("active", True))}
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(22, 20, 22, 18)
-        layout.setSpacing(12)
-        layout.addWidget(make_label(f"{teacher_name} 的每周可用时段", "CardTitle", word_wrap=False))
-        layout.addWidget(make_label("勾选 = 可约；取消勾选 = 该节次不可约", "Hint"))
 
         grid = QGridLayout()
         grid.setSpacing(6)
@@ -48,7 +45,7 @@ class AvailabilityDialog(QDialog):
                 cb.setChecked((weekday, row) not in unavailable)
                 self._checks[(weekday, row)] = cb
                 grid.addWidget(cb, row, col)
-        layout.addLayout(grid)
+        self.add_content_layout(grid)
 
         quick = QHBoxLayout()
         all_btn = QPushButton("全部可约")
@@ -60,14 +57,14 @@ class AvailabilityDialog(QDialog):
         quick.addWidget(all_btn)
         quick.addWidget(none_btn)
         quick.addStretch(1)
-        layout.addLayout(quick)
+        self.add_content_layout(quick)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.button(QDialogButtonBox.Ok).setText("保存")
         buttons.button(QDialogButtonBox.Cancel).setText("取消")
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+        self.set_buttons(buttons)
 
     def _set_all(self) -> None:
         for cb in self._checks.values():

@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import List, Tuple
 
-from PySide6.QtCore import QDate, Qt
+from PySide6.QtCore import QDate, QTimer, Qt
 from PySide6.QtWidgets import (
     QDateEdit, QFrame, QHBoxLayout, QMessageBox, QVBoxLayout, QWidget,
 )
@@ -39,6 +39,7 @@ class AppointmentsPage(PageBase):
         self._date = enums.today_str()
         self._rooms: List[dict] = []
         self._teachers: List[dict] = []
+        self._refreshing = False
         self._build_ui()
 
     # ------------------------------------------------------------------ 界面
@@ -90,8 +91,25 @@ class AppointmentsPage(PageBase):
         scroll.setObjectName("PageScroll")
         self._root.addWidget(scroll, 1)
 
+        # 页面可见时轮询刷新，学生端新预约能及时出现在教师端（切走即停）
+        self._poll_timer = QTimer(self)
+        self._poll_timer.setInterval(10_000)
+        self._poll_timer.timeout.connect(self.refresh)
+
+    # ------------------------------------------------------------------ 可见性
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._poll_timer.start()
+
+    def hideEvent(self, event) -> None:
+        super().hideEvent(event)
+        self._poll_timer.stop()
+
     # ------------------------------------------------------------------ 加载
     def refresh(self) -> None:
+        if self._refreshing:
+            return
+        self._refreshing = True
         adapter = self.ctx.adapters.appointment
         scheduling = self.ctx.adapters.scheduling
         waitlist = self.ctx.adapters.waitlist
@@ -102,7 +120,16 @@ class AppointmentsPage(PageBase):
                     scheduling.rooms(), scheduling.teachers(),
                     waitlist.list({"status": "waiting"}))
 
-        self.call(_job, on_ok=self._render)
+        self.call(_job, on_ok=self._on_refresh_done,
+                  on_fail=self._on_refresh_failed)
+
+    def _on_refresh_done(self, payload) -> None:
+        self._refreshing = False
+        self._render(payload)
+
+    def _on_refresh_failed(self, exc: Exception) -> None:
+        self._refreshing = False
+        self._default_fail(exc)
 
     def _on_date_changed(self, qdate: QDate) -> None:
         self._date = qdate.toString("yyyy-MM-dd")
@@ -253,10 +280,10 @@ class AppointmentsPage(PageBase):
         row.addWidget(self._status_badge(badge_text, badge_obj))
         lay.addLayout(row)
 
-        # 教师 / 咨询室
-        meta = " · ".join(x for x in (appt.teacher_name, appt.room_name) if x)
-        if meta:
-            lay.addWidget(make_label(meta, "Hint"))
+        # 教师 / 咨询室（始终显示；空则显式标「未分配」，避免看起来像数据丢失）
+        teacher_text = appt.teacher_name or "未分配教师"
+        room_text = appt.room_name or "未分配咨询室"
+        lay.addWidget(make_label(f"{teacher_text} · {room_text}", "Hint"))
 
         if appt.note:
             lay.addWidget(make_label(f"备注：{appt.note}", "Hint"))

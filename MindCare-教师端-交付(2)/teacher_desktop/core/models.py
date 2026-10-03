@@ -16,6 +16,7 @@ from typing import List, Optional
 @dataclass
 class TriageFlags:
     has_history: bool = False
+    history_text: Optional[str] = None
     recent_down_count: int = 0
     window_size: int = 0
     pending_help: bool = False
@@ -25,6 +26,7 @@ class TriageFlags:
         raw = raw or {}
         return cls(
             has_history=bool(raw.get("has_history")),
+            history_text=raw.get("history_text"),
             recent_down_count=int(raw.get("recent_down_count") or 0),
             window_size=int(raw.get("window_size") or 0),
             pending_help=bool(raw.get("pending_help")),
@@ -89,6 +91,7 @@ class StudentToday:
     submission_count_today: int = 0
     pending_help: bool = False
     alert: Optional[Alert] = None
+    mental_history: Optional[str] = None
     shared_records: List[SharedRecord] = field(default_factory=list)
     shared_treehole: List[dict] = field(default_factory=list)
     has_shared_records: bool = False
@@ -112,6 +115,7 @@ class StudentToday:
             submission_count_today=int(raw.get("submission_count_today") or 0),
             pending_help=bool(raw.get("pending_help")),
             alert=alert,
+            mental_history=raw.get("mental_history"),
             shared_records=[
                 SharedRecord(
                     record_id=str(r.get("record_id", "")),

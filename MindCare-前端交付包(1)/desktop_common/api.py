@@ -222,7 +222,8 @@ class ApiClient:
                  *, timeout: float = DEFAULT_TIMEOUT,
                  transport: Optional[Callable[[str, str, Optional[dict], Optional[str], float], Dict[str, Any]]] = None,
                  retry_on_timeout: bool = True,
-                 session_path: Optional[Any] = None) -> None:
+                 session_path: Optional[Any] = None,
+                 role: Optional[str] = None) -> None:
         raw = (base_url or "").strip().rstrip("/")
         if not raw:
             raw = "http://127.0.0.1:8080"
@@ -250,7 +251,7 @@ class ApiClient:
         #: 症状是"登录成功却停在登录页"）。
         self.session_path: Optional[Any] = session_path
         if session_path is None and not session_mod.persistence_disabled():
-            self.session_path = session_mod.session_file()
+            self.session_path = session_mod.session_file(role)
         elif session_path is False:
             self.session_path = None
         #: 最近一次 `load_session()` 的结果（`None` = 没恢复出登录态）

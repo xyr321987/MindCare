@@ -1516,10 +1516,10 @@ def check_integration(app: QtWidgets.QApplication, window: StudentMainWindow,
         (1001, "坏 token 访问学生接口 → 1001（未登录/过期）",
          ApiClient(server).my_profile, (date,)),
         (1002, "学生访问教师接口 → 1002（角色越界）", client.triage_list, ()),
-        (2001, "缺 detail 提交 → 2001（message 带字段名）",
+        (2001, "缺 cause_category 提交 → 2001（message 带字段名）",
          client.submit_questionnaire, ({
              "record_id": new_id("rec_"), "mood": "down", "plain_note": None,
-             "cause_category": "study", "detail": None, "request_help": False,
+             "cause_category": None, "detail": None, "request_help": False,
              "consent_share": False, "consent_ts": None},)),
         (2001, "happy 但 request_help=true → 2001（矩阵第 1 行）",
          client.submit_questionnaire, ({

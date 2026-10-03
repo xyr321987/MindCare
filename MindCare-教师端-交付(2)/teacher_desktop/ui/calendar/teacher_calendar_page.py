@@ -236,9 +236,9 @@ class TeacherCalendarPage(PageBase):
 
         def _job():
             for t in dialog.new_teachers:
-                adm.create(t["name"], t["password"])
+                adm.create(t["name"], t["password"], t.get("teacher_no"))
             for upd in dialog.updates:
-                adm.update(upd["teacher_id"], upd["name"])
+                adm.update(upd["teacher_id"], upd["name"], upd.get("teacher_no"))
             for rst in dialog.resets:
                 adm.reset_password(rst["teacher_id"], rst["new_password"])
             for tid in dialog.deletes:

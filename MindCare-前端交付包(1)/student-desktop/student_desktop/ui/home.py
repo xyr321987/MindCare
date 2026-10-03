@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
-"""「见山」学生端首页（第一/二轮 UI 还原：整体布局 + SVG 插画资源）。
+"""「见山」学生端首页（墨绿 + 暖米白 + 手绘插画风）。
 
-结构（自上而下）:
-    ① 顶部欢迎区：左侧欢迎文字，右侧山峦插画
+结构（自上而下，见 `jianshan-visual-design` 规范）:
+    ① 顶部欢迎区：左「你好」+ 波浪线 + 副标题；右山峦插画（太阳/云朵/飞鸟/山）
     ② 核心功能区：问卷 / 树洞 / 预约 / 我的档案 四张卡片横向排列
-    ③ 内容辅助区：最近活动（左）+ 今日的小纸条（右）并列
-    ④ 底部提示区：「慢慢来，也算在前进。」+ 山峰装饰
+    ③ 内容辅助区：今日的小纸条（暖白纸张、手写便签感）
+    ④ 底部提示区：「慢慢来，也算在前进。」+ 山峰线稿
 
 纪律：
 * 本页**不产生中文界面字面量**，全部从 `COPY` 取（见 `desktop_common/copy.py`）。
-* 本页**不发网络请求**：欢迎语 / 最近活动由主窗口注入（`set_profile` / `set_activity`），
+* 本页**不发网络请求**：欢迎语由主窗口注入（`set_profile`），
   小纸条文案从文案表轮换，保证主线程零传输（UI约定 §3）。
 * 插画用**本地 SVG 资源**（`assets/`），经 `QSvgRenderer` 渲染，风格统一、便于替换维护。
+* 首页配色只在本页生效（`theme.py` 的 `HOME_*` 常量 + `Home*` objectName），
+  不改动其它页面与教师端。
 """
 from __future__ import annotations
 
@@ -34,7 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from desktop_common.copy import COPY
-from desktop_common.widgets import Card, make_hint, make_label
+from desktop_common.widgets import Card, make_label
 
 __all__ = ["HomePage", "svg_pixmap"]
 
@@ -46,14 +48,14 @@ _NOTE_KEYS = ("home.note.1", "home.note.2", "home.note.3", "home.note.4")
 
 #: 四张功能卡片：`tone` 动态属性 → 主题 QSS；`art` 是 SVG 插画资源
 _CARD_SPECS = (
-    {"key": "questionnaire", "title": "c.tab.questionnaire", "desc": "home.card.questionnaire.desc",
-     "art": "card_weather.svg"},
-    {"key": "treehole", "title": "s.treehole.tab.title", "desc": "home.card.treehole.desc",
-     "art": "card_treehole.svg"},
-    {"key": "appointment", "title": "c.tab.appointment", "desc": "home.card.appointment.desc",
-     "art": "card_calendar.svg"},
-    {"key": "profile", "title": "c.tab.profile", "desc": "home.card.profile.desc",
-     "art": "card_diary.svg"},
+    {"key": "questionnaire", "title": "home.card.questionnaire.title",
+     "desc": "home.card.questionnaire.desc", "art": "card_weather.svg"},
+    {"key": "treehole", "title": "home.card.treehole.title",
+     "desc": "home.card.treehole.desc", "art": "card_treehole.svg"},
+    {"key": "appointment", "title": "home.card.appointment.title",
+     "desc": "home.card.appointment.desc", "art": "card_calendar.svg"},
+    {"key": "profile", "title": "home.card.profile.title",
+     "desc": "home.card.profile.desc", "art": "card_diary.svg"},
 )
 
 
@@ -78,11 +80,16 @@ def svg_pixmap(name: str, width: int, height: int) -> QPixmap:
 
 
 class _SvgArt(QWidget):
-    """按控件尺寸等比缩放渲染一张 SVG 插画（本地资源，透明底）。"""
+    """按控件尺寸等比缩放渲染一张 SVG 插画（本地资源，透明底）。
+
+    透明底：QSS 里 `QWidget#SvgArt { background: transparent; }`，
+    这样卡片 tone 底色能完整透出，插画不会盖上一块底色矩形。
+    """
 
     def __init__(self, name: str, *, min_height: int = 88,
                  parent: Optional[QWidget] = None) -> None:
         super().__init__(parent)
+        self.setObjectName("SvgArt")
         self._name = name
         path = ASSETS_DIR / name
         self._renderer = QSvgRenderer(str(path)) if path.exists() else None
@@ -125,7 +132,7 @@ class _FeatureCard(QFrame):
         inner.setContentsMargins(20, 20, 20, 20)
         inner.setSpacing(10)
 
-        self.art = _SvgArt(art, min_height=96)
+        self.art = _SvgArt(art, min_height=92)
         inner.addWidget(self.art, 1)
 
         self.title_label = make_label(title, "HomeCardTitle", word_wrap=False)
@@ -177,13 +184,13 @@ class HomePage(QWidget):
         content = QWidget()
         content.setObjectName("HomeScrollContent")
         self._content_layout = QVBoxLayout(content)
-        self._content_layout.setContentsMargins(40, 36, 40, 28)
+        self._content_layout.setContentsMargins(40, 32, 40, 28)
         self._content_layout.setSpacing(24)
         self.scroll.setWidget(content)
 
         self._build_welcome()
         self._build_cards()
-        self._build_aux()
+        self._build_note_card()
         self._build_footer()
         self._content_layout.addStretch(1)
 
@@ -192,21 +199,27 @@ class HomePage(QWidget):
     # ---------------------------------------------------------------- 构建
 
     def _build_welcome(self) -> None:
+        """顶部欢迎区：左「你好」+ 副标题；右山峦插画。"""
         row = QHBoxLayout()
-        row.setSpacing(24)
+        row.setSpacing(28)
 
         left = QVBoxLayout()
-        left.setSpacing(10)
-        left.addStretch(1)
+        left.setSpacing(8)
         self.hello_label = make_label("", "HomeHello", word_wrap=False)
         left.addWidget(self.hello_label)
+        wave = QFrame()
+        wave.setObjectName("HomeWave")
+        wave.setFixedSize(72, 3)
+        left.addWidget(wave)
         self.subtitle_label = make_label(COPY["home.welcome.subtitle"], "HomeSubtitle")
         left.addWidget(self.subtitle_label)
         left.addStretch(1)
         row.addLayout(left, 3)
 
-        self.welcome_art = _SvgArt("welcome_scene.svg", min_height=170)
-        self.welcome_art.setMaximumWidth(500)
+        self.welcome_art = _SvgArt("welcome_scene.svg", min_height=176)
+        self.welcome_art.setObjectName("HomeWelcomeArt")
+        self.welcome_art.setMinimumWidth(300)
+        self.welcome_art.setMaximumWidth(440)
         row.addWidget(self.welcome_art, 2)
 
         self._content_layout.addLayout(row)
@@ -224,31 +237,12 @@ class HomePage(QWidget):
             self._cards.append(card)
         self._content_layout.addLayout(self._cards_grid)
 
-    def _build_aux(self) -> None:
-        row = QHBoxLayout()
-        row.setSpacing(20)
-
-        # 最近活动（左）
-        self.activity_card = Card()
-        self.activity_card.setObjectName("HomeActivity")
-        activity_inner = self.activity_card.body_layout()
-        activity_inner.setContentsMargins(22, 22, 22, 22)
-        activity_inner.setSpacing(10)
-        self.activity_title = make_label(COPY["home.activity.title"], "HomeSectionTitle")
-        activity_inner.addWidget(self.activity_title)
-        self._activity_rows = QVBoxLayout()
-        self._activity_rows.setSpacing(0)
-        activity_inner.addLayout(self._activity_rows)
-        self.activity_empty = make_hint(COPY["home.activity.empty"])
-        self._activity_rows.addWidget(self.activity_empty)
-        activity_inner.addStretch(1)
-        row.addWidget(self.activity_card, 3)
-
-        # 今日的小纸条（右）
+    def _build_note_card(self) -> QWidget:
+        """今日的小纸条：暖白纸张、手写信纸感（右下植物小插画 + 署名）。"""
         self.note_card = Card()
         self.note_card.setObjectName("HomeNote")
         note_inner = self.note_card.body_layout()
-        note_inner.setContentsMargins(26, 26, 26, 26)
+        note_inner.setContentsMargins(26, 24, 26, 22)
         note_inner.setSpacing(14)
         note_head = QHBoxLayout()
         note_head.addWidget(make_label(COPY["home.note.title"], "HomeNoteTitle", word_wrap=False))
@@ -273,11 +267,9 @@ class HomePage(QWidget):
         plant.setFixedSize(56, 48)
         note_bottom.addWidget(plant)
         note_inner.addLayout(note_bottom)
-        note_inner.addStretch(1)
-        row.addWidget(self.note_card, 2)
-
-        self._content_layout.addLayout(row)
         self._apply_note()
+        self._content_layout.addWidget(self.note_card)
+        return self.note_card
 
     def _build_footer(self) -> None:
         footer = QHBoxLayout()
@@ -295,8 +287,9 @@ class HomePage(QWidget):
     # ---------------------------------------------------------------- 响应式
 
     def _relayout_cards(self) -> None:
-        """四张卡片：宽窗口横向四列，窄窗口自动两列（禁止横向溢出）。"""
-        cols = 4 if self.width() >= 1080 else 2
+        """四张卡片：宽窗口四列，中等两列，窄窗口一列（禁止横向溢出）。"""
+        width = self.width()
+        cols = 4 if width >= 1000 else (2 if width >= 620 else 1)
         for i, card in enumerate(self._cards):
             row, col = divmod(i, cols)
             self._cards_grid.addWidget(card, row, col)
@@ -313,29 +306,6 @@ class HomePage(QWidget):
         name = str(profile.get("name") or "").strip()
         self.hello_label.setText(
             COPY["home.welcome.hello"].replace("{name}", name))
-
-    def set_activity(self, items: List[dict]) -> None:
-        """刷新「最近活动」（每项 `{text, time}`；无数据时显示友好空状态）。"""
-        while self._activity_rows.count():
-            item = self._activity_rows.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.setParent(None)
-                widget.deleteLater()
-        if not items:
-            self.activity_empty = make_hint(COPY["home.activity.empty"])
-            self._activity_rows.addWidget(self.activity_empty)
-            return
-        for entry in items:
-            row = QFrame()
-            row.setObjectName("HomeActivityRow")
-            lay = QHBoxLayout(row)
-            lay.setContentsMargins(0, 10, 0, 10)
-            lay.setSpacing(8)
-            lay.addWidget(make_label(str(entry.get("text") or ""), "HomeActivityText"))
-            lay.addStretch(1)
-            lay.addWidget(make_label(str(entry.get("time") or ""), "HomeActivityTime"))
-            self._activity_rows.addWidget(row)
 
     # ---------------------------------------------------------------- 内部
 

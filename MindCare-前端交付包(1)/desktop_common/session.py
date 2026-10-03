@@ -94,9 +94,14 @@ def session_dir() -> Path:
     return Path(base) / "MindCare"
 
 
-def session_file() -> Path:
-    """登录态文件全路径：`<session_dir()>/session.json`。"""
-    return session_dir() / SESSION_FILE_NAME
+def session_file(role: Optional[str] = None) -> Path:
+    """登录态文件全路径：`<session_dir()>/session.json`。
+
+    学生端与教师端是**两个独立应用**，登录态不得互相覆盖：传 `role` 时各自用
+    `session-<role>.json`（如 `session-student.json` / `session-teacher.json`）。
+    """
+    name = SESSION_FILE_NAME if not role else f"session-{role}.json"
+    return session_dir() / name
 
 
 def persistence_disabled() -> bool:

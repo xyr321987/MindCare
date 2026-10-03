@@ -22,6 +22,7 @@ from PySide6.QtWidgets import (
 from desktop_common.widgets import make_button, make_label
 
 from .appointments.appointments_page import AppointmentsPage
+from .analytics.analytics_page import AnalyticsPage
 from .calendar.teacher_calendar_page import TeacherCalendarPage
 from .common.async_mixin import PageContext
 from .common.svg import svg_pixmap
@@ -33,18 +34,30 @@ from .students.students_page import StudentsPage
 from .triage.triage_page import TriagePage
 from .warnings.warnings_page import WarningsPage
 
-#: (导航 key, 文案) —— 新增页面只改这里；「工作预览」为默认首页
-NAV_ITEMS = [
-    ("overview", "工作预览"),
-    ("triage", "分诊台"),
-    ("appointments", "今日预约"),
-    ("calendar", "教师日历"),
-    ("stats", "排班统计"),
-    ("warnings", "预警记录"),
-    ("replies", "回复库"),
-    ("export", "数据导出"),
-    ("students", "学生管理"),
-]
+#: 导航分组（按工作流程）：组名 + [(导航 key, 文案)]。新增页面只改这里。
+NAV_GROUPS = (
+    ("工作台", (
+        ("overview", "工作总览"),
+    )),
+    ("筛查与预警", (
+        ("triage", "分诊台"),
+        ("warnings", "预警记录"),
+    )),
+    ("约谈与排期", (
+        ("appointments", "今日预约"),
+        ("calendar", "教师日历"),
+        ("replies", "回复库"),
+    )),
+    ("管理与数据", (
+        ("students", "学生管理"),
+        ("stats", "排班统计"),
+        ("export", "数据导出"),
+        ("analytics", "数据分析"),
+    )),
+)
+
+#: 展平的 (key, 文案) 列表（`_select` / `addWidget` 用；顺序与 NAV_GROUPS 一致）
+NAV_ITEMS = [(key, text) for _group, items in NAV_GROUPS for key, text in items]
 
 #: 导航图标（key -> SVG 文件名）
 NAV_ICONS = {
@@ -57,6 +70,7 @@ NAV_ICONS = {
     "replies": "icon_replies.svg",
     "export": "icon_export.svg",
     "students": "icon_students.svg",
+    "analytics": "icon_analytics.svg",
 }
 
 
@@ -88,6 +102,7 @@ class MainWindow(QWidget):
             "replies": RepliesPage(ctx),
             "export": ExportPage(ctx),
             "students": StudentsPage(ctx),
+            "analytics": AnalyticsPage(ctx),
         }
         for key, _ in NAV_ITEMS:
             self.stack.addWidget(self.pages[key])
@@ -118,19 +133,25 @@ class MainWindow(QWidget):
 
         self.nav_group = QButtonGroup(self)
         self.nav_group.setExclusive(True)
-        for index, (key, text) in enumerate(NAV_ITEMS):
-            btn = QPushButton(text)
-            btn.setObjectName("NavButton")
-            btn.setCheckable(True)
-            btn.setFocusPolicy(Qt.StrongFocus)
-            btn.setCursor(Qt.PointingHandCursor)
-            icon_name = NAV_ICONS.get(key)
-            if icon_name:
-                btn.setIcon(QIcon(svg_pixmap(icon_name, 18, 18)))
-                btn.setIconSize(QSize(18, 18))
-            btn.clicked.connect(lambda _=False, k=key: self._select(k))
-            self.nav_group.addButton(btn, index)
-            layout.addWidget(btn)
+        index = 0
+        for group_index, (group_title, items) in enumerate(NAV_GROUPS):
+            if group_index:
+                layout.addSpacing(6)
+            layout.addWidget(make_label(group_title, "SectionCaption", word_wrap=False))
+            for key, text in items:
+                btn = QPushButton(text)
+                btn.setObjectName("NavButton")
+                btn.setCheckable(True)
+                btn.setFocusPolicy(Qt.StrongFocus)
+                btn.setCursor(Qt.PointingHandCursor)
+                icon_name = NAV_ICONS.get(key)
+                if icon_name:
+                    btn.setIcon(QIcon(svg_pixmap(icon_name, 18, 18)))
+                    btn.setIconSize(QSize(18, 18))
+                btn.clicked.connect(lambda _=False, k=key: self._select(k))
+                self.nav_group.addButton(btn, index)
+                layout.addWidget(btn)
+                index += 1
 
         layout.addStretch(1)
 

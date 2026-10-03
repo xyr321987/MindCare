@@ -135,6 +135,8 @@ class QuestionnaireTab(QWidget):
     treehole_deeplink = Signal()
     #: 结果页的「关闭/再见」（回到告知页并重置本地状态）
     restart_requested = Signal()
+    #: 告知页「想直接预约」深链（切到独立预约 Tab）
+    appointment_deeplink = Signal()
 
     def __init__(self, parent: Optional[QWidget] = None, *,
                  profile_provider: Optional[Callable[[], dict]] = None,
@@ -229,7 +231,9 @@ class QuestionnaireTab(QWidget):
 
     def _wire(self) -> None:
         self.notice.next_requested.connect(lambda: self.show_page("q1"))
+        self.notice.appointment_requested.connect(self.appointment_deeplink.emit)
         self.q1.next_requested.connect(self._after_mood)
+        self.q1.back_requested.connect(lambda: self.show_page("notice"))
         self.plain_note.back_requested.connect(lambda: self.show_page("q1"))
         self.plain_note.skip_requested.connect(self._plain_skip)
         self.plain_note.note_submitted.connect(self._plain_note)
