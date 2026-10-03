@@ -12,6 +12,8 @@
 
 ## 快速开始
 
+> 完整的分步运行指南见 [运行说明](<运行说明.md>)。
+
 环境：Python 3（本机实测 3.12）。学生端/教师端需 `pip install PySide6`（教师端另需 `openpyxl`），服务端无第三方依赖。
 
 ### 1. 启动服务端
@@ -64,6 +66,7 @@ python -m teacher_desktop.app.selfcheck                       # 教师端
 
 ## 更多文档
 
+- [运行说明](<运行说明.md>)
 - [服务端 README](<MindCare-服务端/README.md>)
 - [学生端（前端交付包）README](<MindCare-前端交付包(1)/README.md>)
 - [教师端 README](<MindCare-教师端-交付(2)/README.md>)
