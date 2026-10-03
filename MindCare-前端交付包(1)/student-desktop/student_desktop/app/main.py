@@ -2,8 +2,8 @@
 
 启动（UI约定 §0 的启动方式）::
 
-    $py = 'C:\\Users\\cu\\.dsh\\dsh-runtimes\\dsh-primary-runtime\\dependencies\\python\\python.exe'
-    Set-Location 'E:\\Users data\\Desktop\\黑客松项目\\mindcare'
+    $py = 'python'
+    Set-Location '<仓库根目录>'
     & $py -m student_desktop.app.main --server http://127.0.0.1:8080
 
 无显示器环境下::

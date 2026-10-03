@@ -12,7 +12,7 @@
 
 ```powershell
 # 在【服务端仓库】里另开一个窗口（本包不含服务端）
-$py = 'C:\Users\cu\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
+$py = 'python'
 $env:PYTHONPATH = '<服务端仓库路径>'
 & $py -m server.api.httpd --engine mock --port 8080 --days 7 --data-dir "$PWD\data"
 ```
@@ -36,7 +36,7 @@ student-desktop\start-student.cmd
 **方式 B（手动）**
 
 ```powershell
-$py = 'C:\Users\cu\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
+$py = 'python'
 Set-Location '<本包的父目录>\MindCare-前端交付包'      # 即本 README 所在目录
 
 $env:PYTHONUTF8 = '1'                                  # ⚠️ 必须，见 §4
@@ -92,7 +92,7 @@ MindCare-前端交付包/
 ## 2. 跑自检（改完代码请跑一遍）
 
 ```powershell
-$py = 'C:\Users\cu\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
+$py = 'python'
 Set-Location '<本包目录>'
 $env:QT_QPA_PLATFORM = 'offscreen'          # 无头截图用；要看真窗口就不要设
 $env:PYTHONUTF8 = '1'

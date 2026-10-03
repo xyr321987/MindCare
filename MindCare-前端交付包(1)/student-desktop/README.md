@@ -36,8 +36,8 @@ start-student.cmd http://10.0.0.5:8080
 两种做法任选：
 
 ```powershell
-$py = 'C:\Users\cu\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
-Set-Location 'E:\Users data\Desktop\黑客松项目\mindcare'
+$py = 'python'
+Set-Location '<仓库根目录>'
 
 # 方式 A（推荐）：显式给路径，`-m` 模块启动
 $env:PYTHONPATH = "$PWD;$PWD\student-desktop"
@@ -56,8 +56,8 @@ $env:PYTHONUTF8 = '1'     # ⚠️ 必须：GBK 控制台下打印特殊字符�
 ```powershell
 $env:QT_QPA_PLATFORM = 'offscreen'
 $env:PYTHONUTF8 = '1'          # ⚠️ 必须：GBK 控制台打印特殊字符会 UnicodeEncodeError
-$py = 'C:\Users\cu\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
-Set-Location 'E:\Users data\Desktop\黑客松项目\mindcare'
+$py = 'python'
+Set-Location '<仓库根目录>'
 $env:PYTHONPATH = "$PWD;$PWD\student-desktop"
 
 & $py -m student_desktop.app.selfcheck                  # 65 项断言 + 8 张截图
@@ -71,9 +71,9 @@ $env:PYTHONPATH = "$PWD;$PWD\student-desktop"
 **启动前请先起 mock 服务（联调段会用到）**：
 
 ```powershell
-Set-Location 'E:\Users data\Desktop\黑客松项目\mindcare'
-$cmdline = 'set PYTHONPATH=E:\Users data\Desktop\黑客松项目\mindcare&& set PYTHONUTF8=1&& "' + $py +
-           '" -m server.api.httpd --engine mock --port 8080 --data-dir "E:\Users data\Desktop\黑客松项目\mindcare\data"'
+Set-Location '<仓库根目录>'
+$cmdline = 'set PYTHONPATH=<仓库根目录>&& set PYTHONUTF8=1&& "' + $py +
+           '" -m server.api.httpd --engine mock --port 8080 --data-dir "<仓库根目录>\data"'
 Start-Process cmd.exe -ArgumentList '/c', $cmdline -WindowStyle Hidden
 Invoke-WebRequest 'http://127.0.0.1:8080/api/v1/health' -UseBasicParsing   # 应返回 code:0
 ```

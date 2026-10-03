@@ -31,8 +31,8 @@
 
 **启动方式（必须写进各自 README）**
 ```powershell
-$py = 'C:\Users\cu\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
-Set-Location 'E:\Users data\Desktop\黑客松项目\mindcare'
+$py = 'python'
+Set-Location '<仓库根目录>'
 & $py -m student_desktop.app.main --server http://127.0.0.1:8080
 & $py -m teacher_desktop.app.main --server http://127.0.0.1:8080
 ```

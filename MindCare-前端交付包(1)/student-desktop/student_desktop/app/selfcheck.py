@@ -3,8 +3,8 @@ r"""学生端 offscreen 自检（`docs/UI约定.md` §7 + 本任务验收标准�
 跑法::
 
     $env:QT_QPA_PLATFORM='offscreen'
-    $py = 'C:\\Users\\cu\\.dsh\\dsh-runtimes\\dsh-primary-runtime\\dependencies\\python\\python.exe'
-    Set-Location 'E:\\Users data\\Desktop\\黑客松项目\\mindcare'
+    $py = 'python'
+    Set-Location '<仓库根目录>'
     & $py -m student_desktop.app.selfcheck
 
 做四件事：
