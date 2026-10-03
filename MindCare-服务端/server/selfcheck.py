@@ -394,6 +394,31 @@ def main() -> int:
     hit = next((t for t in av2["items"] if t["teacher_id"] == "tch_T001"), None)
     ok(hit is not None and hit["available"] is False, "停诊时段该老师判为不可约")
 
+    # 39 咨询室档案（位置/特点）+ 可预约咨询室
+    rm_c = call("POST", "/db/write", token=tea_token, body={"action": "rooms.create",
+                "payload": {"name": "咨询室C", "location": "三楼东侧", "features": "安静、采光好"}})
+    ok(rm_c.get("location") == "三楼东侧" and rm_c.get("features") == "安静、采光好",
+       "咨询室可登记位置与特点")
+    ar = call("GET", "/appointments/available_rooms",
+              query={"year": "2027", "month": "04", "day": "10", "period": "2"}, token=stu_token)
+    ok(any(r["name"] == "咨询室A" and r["available"] for r in ar["items"]),
+       "空闲时段返回可预约咨询室（含咨询室A）")
+
+    # 40 学生带 room_id 预约 + 同老师同咨询室同时段第二个学生被拒
+    apt_r = call("POST", "/appointments", token=stu_token,
+                 body={"apt_id": "apt_room", "year": "2027", "month": "04", "day": "10",
+                       "time": "08:50", "teacher_id": "tch_T001", "room_id": "rm_default",
+                       "share_questionnaire": False, "share_treehole": False})
+    ok(apt_r.get("apt_id") == "apt_room", "学生带 teacher_id+room_id 预约成功")
+    row_r = db.query_one("SELECT teacher_id, room_id FROM appointments WHERE apt_id='apt_room'")
+    ok(row_r is not None and row_r["teacher_id"] == "tch_T001" and row_r["room_id"] == "rm_default",
+       "预约落库带 teacher_id 与 room_id")
+    expect_err("POST", "/appointments",
+               {"apt_id": "apt_room2", "year": "2027", "month": "04", "day": "10",
+                "time": "08:50", "teacher_id": "tch_T001", "room_id": "rm_default",
+                "share_questionnaire": False, "share_treehole": False},
+               b_token, 2001, "同老师同咨询室同时段第二个学生被拒")
+
     print()
     if fails:
         print(f"自检未通过：{len(fails)} 项")

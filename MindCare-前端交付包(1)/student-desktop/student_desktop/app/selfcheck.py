@@ -763,6 +763,15 @@ def check_ui(app: QtWidgets.QApplication,
             return {"code": 0, "message": "ok", "data": {
                 "status": "ok", "version": "1.0.0-stub",
                 "server_time": now_iso(), "engine_ready": True}}
+        if path_ == "/appointments/available_teachers":
+            return {"code": 0, "message": "ok", "data": {"items": [
+                {"teacher_id": "tch_T001", "name": "心理老师", "available": True},
+            ]}}
+        if path_ == "/appointments/available_rooms":
+            return {"code": 0, "message": "ok", "data": {"items": [
+                {"room_id": "rm_default", "name": "咨询室A", "location": None,
+                 "features": None, "available": True},
+            ]}}
         return {"code": 0, "message": "ok", "data": {"dates": [], "entries": [],
                                                      "submissions": [], "treehole": []}}
 
@@ -821,6 +830,9 @@ def check_ui(app: QtWidgets.QApplication,
     appt_tab.board.set_week(_future.year, _future.month, _future.day)
     _col = sch_mod.weekday_from_date(_future.year, _future.month, _future.day) - 1
     appt_tab._on_cell(2, _col)
+    # 等「可预约咨询室」异步落地（必选：room_combo 有值才放行 _on_confirm）
+    wait_until(app, lambda: appt_tab.room_combo.currentData() is not None,
+               timeout_s=20.0, label="独立预约页咨询室下拉填充")
     appt_tab.share_questionnaire.setChecked(True)
     _appt_posts_before = sum(1 for m, p, _b in ui_requests
                              if m == "POST" and p == "/appointments")
@@ -995,9 +1007,10 @@ def check_ui(app: QtWidgets.QApplication,
     _body_2 = window._appointment_body(_appt_payload)   # 同一份载荷反复组包 → apt_id 复用
     REPORT.check("「预约确认」→ 组装 POST /appointments 请求体（幂等 apt_ + 字段齐全 + 复用）",
                  set(_body_1) == {"apt_id", "year", "month", "day", "time",
-                                  "teacher_id", "share_questionnaire", "share_treehole"}
+                                  "teacher_id", "room_id", "share_questionnaire", "share_treehole"}
                  and str(_body_1["apt_id"]).startswith("apt_")
                  and _body_1["teacher_id"] is None
+                 and _body_1["room_id"] is None
                  and _body_1["share_questionnaire"] is True
                  and _body_1["share_treehole"] is False
                  and _body_1["time"] == "15:00"

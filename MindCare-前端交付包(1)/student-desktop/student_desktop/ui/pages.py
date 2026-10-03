@@ -788,6 +788,17 @@ class AppointmentPage(_FlowPage):
         self.teacher_hint.setVisible(False)
         inner.addWidget(self.teacher_hint)
 
+        # --- 选择咨询室（必选，自动选中第一间可用）----------------------------
+        inner.addWidget(make_body(COPY["s.appointment.room.title"]))
+        self.room_combo = QComboBox()
+        self.room_combo.setObjectName("AppointmentRoomCombo")
+        self.room_combo.setFocusPolicy(Qt.StrongFocus)
+        inner.addWidget(self.room_combo)
+        self.room_hint = make_hint("")
+        self.room_hint.setObjectName("AppointmentRoomHint")
+        self.room_hint.setVisible(False)
+        inner.addWidget(self.room_hint)
+
         #: 独立标签页的「预约成功」提示（问卷流程里无此提示，提交后即跳走）
         self._success_label = make_hint("")
         self._success_label.setObjectName("AppointmentSuccess")
@@ -928,6 +939,7 @@ class AppointmentPage(_FlowPage):
         self.notify_saved("")
         self._render_selected()
         self._refresh_teachers()
+        self._refresh_rooms()
 
     def _refresh_teachers(self) -> None:
         """选中格子后拉取该时段「可预约老师」，填充下拉框（本地模式/未选则不拉）。"""
@@ -966,6 +978,45 @@ class AppointmentPage(_FlowPage):
     def _on_teachers_failed(self, _error: Any) -> None:
         # 查询失败不弹错：下拉保持「不指定老师」，学生仍可正常预约
         self.teacher_hint.setVisible(False)
+
+    def _refresh_rooms(self) -> None:
+        """选中格子后拉取该时段「可预约咨询室」，自动选中第一间可用（必选）。"""
+        if self._client is None or self._runner is None:
+            return
+        day = self.selected_date()
+        period = self.selected_period()
+        if day is None or period is None:
+            return
+        year, month, day_no = day
+        self.room_combo.blockSignals(True)
+        self.room_combo.clear()
+        self.room_combo.blockSignals(False)
+        self.room_hint.setText(COPY["s.appointment.room.loading"])
+        self.room_hint.setVisible(True)
+        self._runner.submit(
+            self._client.available_rooms, year, month, day_no, period,
+            done=self._on_rooms_loaded, failed=self._on_rooms_failed)
+
+    def _on_rooms_loaded(self, data: Any) -> None:
+        available = [it for it in (data or {}).get("items", []) if it.get("available")]
+        self.room_combo.blockSignals(True)
+        self.room_combo.clear()
+        for it in available:
+            label = str(it.get("name") or it.get("room_id") or "")
+            loc = it.get("location")
+            if loc:
+                label += f"（{loc}）"
+            self.room_combo.addItem(label, str(it.get("room_id")))
+        self.room_combo.blockSignals(False)
+        if not available:
+            self.room_hint.setText(COPY["s.appointment.room.empty"])
+            self.room_hint.setVisible(True)
+        else:
+            self.room_hint.setVisible(False)
+            self.room_combo.setCurrentIndex(0)   # 必选：自动选中第一间可用
+
+    def _on_rooms_failed(self, _error: Any) -> None:
+        self.room_hint.setVisible(False)
 
     def _render_selected(self) -> None:
         """刷新"已选："那一行（选中格里那个格子的文字也随之更新）。"""
@@ -1019,6 +1070,7 @@ class AppointmentPage(_FlowPage):
             "time_start": schedule_mod.period_start(period),
             "time_end": schedule_mod.period_end(period),
             "teacher_id": self.teacher_combo.currentData(),
+            "room_id": self.room_combo.currentData(),
             "share_questionnaire": self.share_questionnaire.isChecked(),
             "share_treehole": self.share_treehole.isChecked(),
         }
@@ -1060,6 +1112,10 @@ class AppointmentPage(_FlowPage):
                 self.set_error(COPY["s.appointment.error.taken"])
                 self._refresh()
                 return
+        # 必选咨询室（HTTP 模式）：没有可用咨询室时拦截，避免落成 room_id 为空
+        if self._client is not None and self.room_combo.currentData() is None:
+            self.set_error(COPY["s.appointment.room.empty"])
+            return
         self.stop_sync()
         self.confirmed.emit(self.payload())
 
@@ -1091,6 +1147,10 @@ class AppointmentPage(_FlowPage):
         self.teacher_combo.addItem(COPY["s.appointment.teacher.none"], None)
         self.teacher_combo.blockSignals(False)
         self.teacher_hint.setVisible(False)
+        self.room_combo.blockSignals(True)
+        self.room_combo.clear()
+        self.room_combo.blockSignals(False)
+        self.room_hint.setVisible(False)
         self.selected_label.setText(COPY["s.appointment.selected.none"])
         self.board.clear_selection()
         today = date.today()

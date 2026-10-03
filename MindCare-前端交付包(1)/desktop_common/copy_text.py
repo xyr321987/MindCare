@@ -4,7 +4,7 @@
 唯一事实源： `mindcare/copywriting.md`（点分 ID）+ `mindcare/copywriting.json`
 （`OVERRIDES` / `JSON_ONLY` 的条目运行时读 JSON，见生成器头部说明）。
 
-共 453 条。
+共 456 条。
 """
 from __future__ import annotations
 
@@ -149,6 +149,9 @@ TEXT: Dict[str, str] = {
     "s.appointment.profile.none": "还没有读到你的班级学号，登录后会自动带上。",
     "s.appointment.profile.sid": "学号",
     "s.appointment.profile.title": "预约人信息",
+    "s.appointment.room.empty": "该时段暂无可预约的咨询室，换一个时间试试",
+    "s.appointment.room.loading": "正在查询可预约咨询室…",
+    "s.appointment.room.title": "选择咨询室（必选）",
     "s.appointment.selected": "已选：{date} {weekday} 第{period}节 {start}-{end}",
     "s.appointment.selected.none": "还没选时间",
     "s.appointment.share.hint": "不选也没关系，老师只会看到你的班级、学号和预约时间。",

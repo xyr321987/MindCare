@@ -185,6 +185,9 @@
 | s.appointment.teacher.none | 不指定老师 |
 | s.appointment.teacher.empty | 该时段暂无可预约的老师，换一个时间试试 |
 | s.appointment.teacher.loading | 正在查询可预约老师… |
+| s.appointment.room.title | 选择咨询室（必选） |
+| s.appointment.room.empty | 该时段暂无可预约的咨询室，换一个时间试试 |
+| s.appointment.room.loading | 正在查询可预约咨询室… |
 | s.appointment.profile.title | 预约人信息 |
 | s.appointment.profile.name | 姓名 |
 | s.appointment.profile.class | 班级 |

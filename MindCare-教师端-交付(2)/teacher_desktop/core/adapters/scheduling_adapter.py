@@ -21,14 +21,23 @@ class HttpSchedulingAdapter(SchedulingAdapter):
         data = self.gateway.read("rooms.list")
         return list((data or {}).get("items", []))
 
-    def create_room(self, name: str) -> dict:
-        return self.gateway.write("rooms.create", {"name": name})
+    def create_room(self, name: str, location: Optional[str] = None,
+                    features: Optional[str] = None) -> dict:
+        return self.gateway.write("rooms.create", {
+            "name": name, "location": location, "features": features,
+        })
 
     def update_room(self, room_id: str, *, name: Optional[str] = None,
+                    location: Optional[str] = None,
+                    features: Optional[str] = None,
                     active: Optional[bool] = None) -> dict:
         payload = {"room_id": room_id}
         if name is not None:
             payload["name"] = name
+        if location is not None:
+            payload["location"] = location
+        if features is not None:
+            payload["features"] = features
         if active is not None:
             payload["active"] = bool(active)
         return self.gateway.write("rooms.update", payload)

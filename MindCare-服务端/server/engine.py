@@ -468,11 +468,14 @@ def create_appointment(db: Database, student_id: str, body: dict) -> dict:
     slot = sched.slot_id(int(year), int(month), int(day), period)
     slot_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
 
-    # 学生可选具体老师：有 teacher_id 则做教师级冲突检测；无则向后兼容（老师未分配）
+    # 学生可选老师 + 必选咨询室：做「教师 + 咨询室」双资源冲突检测；teacher_id/room_id 可空向后兼容
     teacher_id = body.get("teacher_id") or None
     if teacher_id and not db.teacher.get(str(teacher_id)):
         raise _err(2002, "教师不存在", "teacher_id")
-    conflict = _conflict(db, slot, slot_date, str(period), teacher_id, None)
+    room_id = body.get("room_id") or None
+    if room_id and not db.query_one("SELECT 1 FROM rooms WHERE room_id=?", (str(room_id),)):
+        raise _err(2002, "咨询室不存在", "room_id")
+    conflict = _conflict(db, slot, slot_date, str(period), teacher_id, room_id)
     if conflict:
         raise _err(2001, conflict, "slot")
 
@@ -481,10 +484,10 @@ def create_appointment(db: Database, student_id: str, body: dict) -> dict:
     weekday = sched.weekday_from_date(int(year), int(month), int(day))
     db.execute(
         "INSERT INTO appointments"
-        "(apt_id, student_id, teacher_id, name, class_name, year, month, day, period, weekday,"
+        "(apt_id, student_id, teacher_id, room_id, name, class_name, year, month, day, period, weekday,"
         " time_start, time_end, slot, date, share_questionnaire, share_treehole, status, created_ts, updated_ts)"
-        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-        (apt_id, student_id, teacher_id, stu["name"], stu["class_name"], str(year), str(month), str(day),
+        " VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+        (apt_id, student_id, teacher_id, room_id, stu["name"], stu["class_name"], str(year), str(month), str(day),
          str(period), str(weekday), sched.period_start(period), sched.period_end(period),
          slot, slot_date, int(bool(body.get("share_questionnaire"))),
          int(bool(body.get("share_treehole"))), "scheduled", now, now),
@@ -530,6 +533,26 @@ def available_teachers(db: Database, year, month, day, period) -> dict:
         items.append({
             "teacher_id": t["teacher_id"], "name": t["name"],
             "available": conflict is None,
+        })
+    return {"items": items}
+
+
+def available_rooms(db: Database, year, month, day, period) -> dict:
+    """某时段的可预约咨询室（学生必选咨询室用）。
+
+    空闲判定（唯一事实源，复用 `_conflict` 的咨询室路）：
+    启用中 + 无该咨询室同时段预约 + 无全局停诊。
+    """
+    period = _coerce_period(year, month, day, None, period)
+    slot = sched.slot_id(int(year), int(month), int(day), period)
+    slot_date = f"{int(year):04d}-{int(month):02d}-{int(day):02d}"
+    items = []
+    for r in db.query("SELECT * FROM rooms ORDER BY created_ts"):
+        conflict = _conflict(db, slot, slot_date, str(period), None, r["room_id"])
+        items.append({
+            "room_id": r["room_id"], "name": r["name"],
+            "location": r.get("location"), "features": r.get("features"),
+            "available": bool(r["active"]) and conflict is None,
         })
     return {"items": items}
 
@@ -1240,9 +1263,12 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         name = str(payload.get("name") or "").strip()
         if not name:
             raise _err(2001, "字段 name 校验失败：必须是非空字符串", "name")
+        location = str(payload.get("location") or "").strip() or None
+        features = str(payload.get("features") or "").strip() or None
         room_id = new_id("rm_")
-        db.execute("INSERT INTO rooms(room_id, name, active, created_ts) VALUES(?,?,1,?)",
-                   (room_id, name, sched.now_iso()))
+        db.execute("INSERT INTO rooms(room_id, name, location, features, active, created_ts)"
+                   " VALUES(?,?,?,?,1,?)",
+                   (room_id, name, location, features, sched.now_iso()))
         db.commit()
         return dict(db.query_one("SELECT * FROM rooms WHERE room_id=?", (room_id,)))
     if action == "rooms.update":
@@ -1253,6 +1279,12 @@ def db_write(db: Database, action: str, payload: dict) -> Any:
         if "name" in payload and payload["name"] is not None:
             db.execute("UPDATE rooms SET name=? WHERE room_id=?",
                        (str(payload["name"]).strip(), room_id))
+        if "location" in payload and payload["location"] is not None:
+            db.execute("UPDATE rooms SET location=? WHERE room_id=?",
+                       (str(payload["location"]).strip() or None, room_id))
+        if "features" in payload and payload["features"] is not None:
+            db.execute("UPDATE rooms SET features=? WHERE room_id=?",
+                       (str(payload["features"]).strip() or None, room_id))
         if "active" in payload and payload["active"] is not None:
             db.execute("UPDATE rooms SET active=? WHERE room_id=?",
                        (int(bool(payload["active"])), room_id))

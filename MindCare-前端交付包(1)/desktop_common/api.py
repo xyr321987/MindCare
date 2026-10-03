@@ -563,6 +563,12 @@ class ApiClient:
                             query={"year": str(year), "month": str(month),
                                    "day": str(day), "period": str(period)}) or {}
 
+    def available_rooms(self, year: Any, month: Any, day: Any, period: Any) -> dict:
+        """`GET /appointments/available_rooms`（学生：某时段可预约的咨询室）。"""
+        return self.request("GET", "/appointments/available_rooms",
+                            query={"year": str(year), "month": str(month),
+                                   "day": str(day), "period": str(period)}) or {}
+
     def set_block(self, year: Any, month: Any, day: Any, period: Any, active: bool,
                   reason: Optional[str] = None) -> dict:
         """`POST /appointments/blocks`（教师；设定/取消某格的不可预约状态）。"""

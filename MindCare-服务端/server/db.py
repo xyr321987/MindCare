@@ -99,6 +99,8 @@ CREATE TABLE IF NOT EXISTS appointments (
 CREATE TABLE IF NOT EXISTS rooms (
     room_id    TEXT PRIMARY KEY,
     name       TEXT NOT NULL,
+    location   TEXT,
+    features   TEXT,
     active     INTEGER NOT NULL DEFAULT 1,
     created_ts TEXT NOT NULL
 );
@@ -267,6 +269,10 @@ class Database:
         bcols = {r["name"] for r in self.query("PRAGMA table_info(blocks)")}
         if "teacher_id" not in bcols:
             self.execute("ALTER TABLE blocks ADD COLUMN teacher_id TEXT")
+        rcols = {r["name"] for r in self.query("PRAGMA table_info(rooms)")}
+        for name in ("location", "features"):
+            if name not in rcols:
+                self.execute(f"ALTER TABLE rooms ADD COLUMN {name} TEXT")
         self.commit()
 
     # ------------------------------------------------------------------ 种子

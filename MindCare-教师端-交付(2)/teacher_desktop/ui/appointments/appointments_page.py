@@ -425,10 +425,11 @@ class AppointmentsPage(PageBase):
         scheduling = self.ctx.adapters.scheduling
 
         def _job():
-            for name in dialog.new_rooms:
-                scheduling.create_room(name)
+            for r in dialog.new_rooms:
+                scheduling.create_room(r["name"], r["location"], r["features"])
             for upd in dialog.updates:
                 scheduling.update_room(upd["room_id"], name=upd["name"],
+                                       location=upd["location"], features=upd["features"],
                                        active=upd["active"])
             for room_id in dialog.deletes:
                 scheduling.delete_room(room_id)
